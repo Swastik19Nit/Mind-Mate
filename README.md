@@ -21,3 +21,10 @@ The code provided in this repository is designed to be run on a Windows environm
 
 ## Workflow
 ![Image Name](https://github.com/Divyanshu4fx/MindMate/blob/main/Sample_Videos/Workflow_diagram.png)
+
+We have added several features to enhance MindMate:
+
+New Character Talking Animation: Enhance user experience with interactive character animations during conversations.
+Integration of Emotion Detection with Chat Bot: Personalize responses based on user's emotional state.
+User Chat Data Storage: Improve user experience and content optimization through behavioral analysis and personalization.
+Speech Input from Users: Enable natural interaction by allowing users to input through speech using speech recognition technology.
