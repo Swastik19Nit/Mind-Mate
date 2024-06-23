@@ -38,18 +38,19 @@ const execCommand = (command) => {
   });
 };
 
-const lipSyncMessage = async (message) => {
-  const time = new Date().getTime();
-  console.log(`Starting conversion for message ${message}`);
-  await execCommand(
-    `ffmpeg -y -i audios/message_${message}.mp3 audios/message_${message}.wav`
-  );
-  console.log(`Conversion done in ${new Date().getTime() - time}ms`);
-  await execCommand(
-    `.\\audios\\rhubarb.exe -f json -o audios/message_${message}.json audios/message_${message}.wav -r phonetic`
-  );
-  console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
-};
+//This code should be again de-commented
+// const lipSyncMessage = async (message) => {
+//   const time = new Date().getTime();
+//   console.log(`Starting conversion for message ${message}`);
+//   await execCommand(
+//     `ffmpeg -y -i audios/message_${message}.mp3 audios/message_${message}.wav`
+//   );
+//   console.log(`Conversion done in ${new Date().getTime() - time}ms`);
+//   await execCommand(
+//     `.\\audios\\rhubarb.exe -f json -o audios/message_${message}.json audios/message_${message}.wav -r phonetic`
+//   );
+//   console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
+// };
 
 let conversationHistory = [];
 
