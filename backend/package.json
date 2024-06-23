@@ -10,11 +10,14 @@
   },
   "author": "Wawa SENSEI <contact@wawasensei.dev>",
   "dependencies": {
+    "@google/generative-ai": "^0.11.4",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "elevenlabs": "^0.8.0",
     "elevenlabs-node": "^1.2.0",
     "express": "^4.18.2",
-    "openai": "^4.26.0"
+    "openai": "^4.26.0",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

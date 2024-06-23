@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "soundFile": "D:\\Excalibur\\backend\\audios\\message_2.wav",
+    "duration": 4.44
+  },
+  "mouthCues": [
+    { "start": 0.00, "end": 0.04, "value": "X" },
+    { "start": 0.04, "end": 0.16, "value": "B" },
+    { "start": 0.16, "end": 0.30, "value": "C" },
+    { "start": 0.30, "end": 0.38, "value": "A" },
+    { "start": 0.38, "end": 0.44, "value": "B" },
+    { "start": 0.44, "end": 0.63, "value": "E" },
+    { "start": 0.63, "end": 0.98, "value": "C" },
+    { "start": 0.98, "end": 1.05, "value": "D" },
+    { "start": 1.05, "end": 1.12, "value": "B" },
+    { "start": 1.12, "end": 1.19, "value": "C" },
+    { "start": 1.19, "end": 1.33, "value": "E" },
+    { "start": 1.33, "end": 1.54, "value": "F" },
+    { "start": 1.54, "end": 1.75, "value": "X" },
+    { "start": 1.75, "end": 1.82, "value": "B" },
+    { "start": 1.82, "end": 1.89, "value": "C" },
+    { "start": 1.89, "end": 2.03, "value": "B" },
+    { "start": 2.03, "end": 2.10, "value": "G" },
+    { "start": 2.10, "end": 2.24, "value": "C" },
+    { "start": 2.24, "end": 2.52, "value": "B" },
+    { "start": 2.52, "end": 2.67, "value": "A" },
+    { "start": 2.67, "end": 2.76, "value": "F" },
+    { "start": 2.76, "end": 2.83, "value": "B" },
+    { "start": 2.83, "end": 3.04, "value": "F" },
+    { "start": 3.04, "end": 3.11, "value": "B" },
+    { "start": 3.11, "end": 3.32, "value": "C" },
+    { "start": 3.32, "end": 3.39, "value": "G" },
+    { "start": 3.39, "end": 3.60, "value": "B" },
+    { "start": 3.60, "end": 3.67, "value": "C" },
+    { "start": 3.67, "end": 3.78, "value": "A" },
+    { "start": 3.78, "end": 3.82, "value": "B" },
+    { "start": 3.82, "end": 3.93, "value": "G" },
+    { "start": 3.93, "end": 4.00, "value": "B" },
+    { "start": 4.00, "end": 4.07, "value": "C" },
+    { "start": 4.07, "end": 4.35, "value": "B" },
+    { "start": 4.35, "end": 4.44, "value": "X" }
+  ]
+}
