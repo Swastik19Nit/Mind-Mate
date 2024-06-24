@@ -1,7 +1,7 @@
 ## Mental Health Assistant
 
 
-![Video Thumbnail](![73a3086d-e7c0-41bf-9cfa-394dd2e01315](https://github.com/Swastik19Nit/Mind-Mate/assets/122457803/860a0fdd-78cc-41eb-9112-b76938793f87))
+![73a3086d-e7c0-41bf-9cfa-394dd2e01315](https://github.com/Swastik19Nit/Mind-Mate/assets/122457803/860a0fdd-78cc-41eb-9112-b76938793f87)
 
 
 The frontend is [here](https://github.com/Swastik19Nit/Mind-Mate/edit/main/frontend).
