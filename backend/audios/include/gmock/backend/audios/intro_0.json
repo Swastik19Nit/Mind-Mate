@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "soundFile": "C:\\Users\\divya\\OneDrive\\Documents\\Excalibur\\backend\\audios\\intro_0.wav",
+    "duration": 2.35
+  },
+  "mouthCues": [
+    { "start": 0.00, "end": 0.03, "value": "X" },
+    { "start": 0.03, "end": 0.09, "value": "B" },
+    { "start": 0.09, "end": 0.15, "value": "G" },
+    { "start": 0.15, "end": 0.22, "value": "C" },
+    { "start": 0.22, "end": 0.36, "value": "B" },
+    { "start": 0.36, "end": 0.64, "value": "C" },
+    { "start": 0.64, "end": 1.02, "value": "X" },
+    { "start": 1.02, "end": 1.07, "value": "B" },
+    { "start": 1.07, "end": 1.12, "value": "G" },
+    { "start": 1.12, "end": 1.19, "value": "C" },
+    { "start": 1.19, "end": 1.33, "value": "B" },
+    { "start": 1.33, "end": 1.47, "value": "C" },
+    { "start": 1.47, "end": 1.54, "value": "B" },
+    { "start": 1.54, "end": 1.68, "value": "C" },
+    { "start": 1.68, "end": 1.76, "value": "A" },
+    { "start": 1.76, "end": 2.01, "value": "B" },
+    { "start": 2.01, "end": 2.08, "value": "F" },
+    { "start": 2.08, "end": 2.15, "value": "B" },
+    { "start": 2.15, "end": 2.35, "value": "X" }
+  ]
+}
