@@ -1,10 +1,10 @@
+## Mental Health Assistant
 
 
-![Video Thumbnail](https://img.youtube.com/vi/EzzcEL_1o9o/maxresdefault.jpg)
+![Video Thumbnail](![73a3086d-e7c0-41bf-9cfa-394dd2e01315](https://github.com/Swastik19Nit/Mind-Mate/assets/122457803/860a0fdd-78cc-41eb-9112-b76938793f87))
 
-[Video tutorial](https://youtu.be/EzzcEL_1o9o)
 
-The frontend is [here](https://github.com/wass08/r3f-virtual-girlfriend-frontend).
+The frontend is [here](https://github.com/Swastik19Nit/Mind-Mate/edit/main/frontend).
 
 ## Setup
 Create a `.env` file at the root of the repository to add your **OpenAI** and **ElevenLabs API Keys**. Refer to `.env.example` for the environment variable names.
