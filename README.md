@@ -21,6 +21,8 @@ The code provided in this repository is designed to be run on a Windows environm
 
 ## Workflow
 ![Image Name](https://github.com/Divyanshu4fx/MindMate/blob/main/Sample_Videos/Workflow_diagram.png)
+![Image2](https://github.com/Swastik19Nit/Mind-Mate/assets/122457803/ab4a5ac1-258d-4324-beb4-96e6548b29c5)
+
 
 We have added several features to enhance MindMate:
 
