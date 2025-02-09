@@ -5,7 +5,6 @@ import express from "express";
 import { promises as fs } from "fs";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ElevenLabsClient } from 'elevenlabs';
-import { v4 as uuid } from 'uuid';
 import { PassThrough } from 'stream';
 import { writeFile } from 'fs/promises';
 

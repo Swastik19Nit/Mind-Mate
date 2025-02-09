@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 libdir=C:/Program Files/Rhubarb Lip Sync/lib
 includedir=C:/Program Files/Rhubarb Lip Sync/include
 
@@ -7,3 +8,14 @@ Version: 1.11.0
 URL: https://github.com/google/googletest
 Libs: -L${libdir} -lgtest 
 Cflags: -I${includedir} -DGTEST_HAS_PTHREAD=0
+=======
+libdir=C:/Program Files/Rhubarb Lip Sync/lib
+includedir=C:/Program Files/Rhubarb Lip Sync/include
+
+Name: gtest
+Description: GoogleTest (without main() function)
+Version: 1.11.0
+URL: https://github.com/google/googletest
+Libs: -L${libdir} -lgtest 
+Cflags: -I${includedir} -DGTEST_HAS_PTHREAD=0
+>>>>>>> eda34995b3c88478726e9d56eb4e464903861058
