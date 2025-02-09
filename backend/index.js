@@ -6,6 +6,8 @@ import { promises as fs } from "fs";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ElevenLabsClient } from 'elevenlabs';
 import { v4 as uuid } from 'uuid';
+import { PassThrough } from 'stream';
+import { writeFile } from 'fs/promises';
 
 dotenv.config();
 
@@ -34,28 +36,51 @@ const execCommand = (command) => {
   });
 };
 
-const createAudioFileFromText = async (text) => {
+const createAudioFileFromText = async (text, fileName) => {
   try {
     const voiceData = await client.voices.get(VOICE_ID);
     if (!voiceData) {
       throw new Error('Voice not found');
     }
 
-    const fileName = `audios/message_${uuid()}.mp3`;
-    const audioResponse = await client.textToSpeech.convert(VOICE_ID,{
+    const audioResponse = await client.textToSpeech.convert(VOICE_ID, {
       output_format: "mp3_44100_128",
-      text:text,
+      text: text,
       modelId: 'eleven_monolingual_v2'
     });
-    console.log(audioResponse); // Check its type and contents
 
-    await fs.writeFile(fileName, Buffer.from(await audioResponse.arrayBuffer()));
+    if (audioResponse instanceof PassThrough) {
+      const chunks = [];
+    
+      audioResponse.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+
+      audioResponse.on('end', async () => {
+        const audioBuffer = Buffer.concat(chunks);
+        await writeFile(fileName, audioBuffer);
+
+        console.log(`Audio file created: ${fileName}`);
+      });
+
+      audioResponse.on('error', (err) => {
+        console.error('Error processing the audio stream:', err);
+      });
+    } else {
+      throw new Error('Audio response is not a stream');
+    }
+
     return fileName;
   } catch (error) {
     console.error('Error in createAudioFileFromText:', error);
     throw error;
   }
 };
+
+
+
+
+
 
 const lipSyncMessage = async (fileName) => {
   const time = new Date().getTime();
@@ -105,11 +130,15 @@ async function run(userMessage) {
       messages = messages.messages;
     }
 
-    for (let message of messages) {
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i];
+      const fileName = `audios/message_${i}.mp3`;
+      const textInput = message.text;
+    
       try {
-        const audioFile = await createAudioFileFromText(message.text);
-        const jsonFile = await lipSyncMessage(audioFile);
-        message.audio = await audioFileToBase64(audioFile);
+        await createAudioFileFromText(textInput, fileName); 
+        const jsonFile = await lipSyncMessage(fileName);
+        message.audio = await audioFileToBase64(fileName);
         message.lipsync = await readJsonTranscript(jsonFile);
       } catch (error) {
         console.error('Error processing message:', error);
@@ -117,6 +146,7 @@ async function run(userMessage) {
         message.lipsync = null;
       }
     }
+    
 
     conversationHistory = [...conversationHistory, `User: ${userMessage}`, ...messages.map(m => `Lisa: ${m.text}`)];
     return messages;
