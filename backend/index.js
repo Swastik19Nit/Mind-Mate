@@ -12,7 +12,7 @@ import { writeFile } from 'fs/promises';
 dotenv.config();
 
 const API_KEY = process.env.GEMINI_AI_API_KEY || "-";
-const ELEVENLABS_API_KEY = "sk_aae4022a6c409238a580b76fc4bdb27684729c2bbcad0303";
+const ELEVENLABS_API_KEY = process.env.EVENLABS_API_KEY ;
 const VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 
 const genAI = new GoogleGenerativeAI(API_KEY);
