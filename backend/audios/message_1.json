@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "soundFile": "D:\\Excalibur\\backend\\audios\\message_1.wav",
+    "soundFile": "C:\\Users\\DELL\\Desktop\\Mind-Mate\\backend\\audios\\message_1.wav",
     "duration": 11.36
   },
   "mouthCues": [
@@ -49,13 +49,13 @@
     { "start": 5.87, "end": 5.94, "value": "G" },
     { "start": 5.94, "end": 6.01, "value": "B" },
     { "start": 6.01, "end": 6.14, "value": "A" },
-    { "start": 6.14, "end": 6.25, "value": "C" },
-    { "start": 6.25, "end": 6.39, "value": "B" },
-    { "start": 6.39, "end": 6.60, "value": "E" },
-    { "start": 6.60, "end": 6.88, "value": "B" },
-    { "start": 6.88, "end": 6.95, "value": "C" },
-    { "start": 6.95, "end": 7.02, "value": "D" },
-    { "start": 7.02, "end": 7.09, "value": "B" },
+    { "start": 6.14, "end": 6.20, "value": "C" },
+    { "start": 6.20, "end": 6.40, "value": "B" },
+    { "start": 6.40, "end": 6.61, "value": "E" },
+    { "start": 6.61, "end": 6.89, "value": "B" },
+    { "start": 6.89, "end": 6.97, "value": "A" },
+    { "start": 6.97, "end": 7.03, "value": "D" },
+    { "start": 7.03, "end": 7.09, "value": "B" },
     { "start": 7.09, "end": 7.30, "value": "C" },
     { "start": 7.30, "end": 7.37, "value": "G" },
     { "start": 7.37, "end": 7.51, "value": "B" },
