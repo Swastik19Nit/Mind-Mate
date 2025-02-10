@@ -11,15 +11,13 @@ import { writeFile } from 'fs/promises';
 dotenv.config();
 
 const API_KEY = process.env.GEMINI_AI_API_KEY || "-";
-const ELEVENLABS_API_KEY = process.env.EVENLABS_API_KEY ;
+const ELEVENLABS_API_KEY = process.env.EVENLABS_API_KEY;
 const VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 
 const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-const client = new ElevenLabsClient({
-  apiKey: ELEVENLABS_API_KEY,
-});
+const client = new ElevenLabsClient({ apiKey: ELEVENLABS_API_KEY });
 
 const app = express();
 app.use(express.json());
@@ -50,7 +48,7 @@ const createAudioFileFromText = async (text, fileName) => {
 
     if (audioResponse instanceof PassThrough) {
       const chunks = [];
-    
+
       audioResponse.on('data', (chunk) => {
         chunks.push(chunk);
       });
@@ -58,7 +56,6 @@ const createAudioFileFromText = async (text, fileName) => {
       audioResponse.on('end', async () => {
         const audioBuffer = Buffer.concat(chunks);
         await writeFile(fileName, audioBuffer);
-
         console.log(`Audio file created: ${fileName}`);
       });
 
@@ -76,24 +73,16 @@ const createAudioFileFromText = async (text, fileName) => {
   }
 };
 
-
-
-
-
-
 const lipSyncMessage = async (fileName) => {
   const time = new Date().getTime();
   console.log(`Starting conversion for file ${fileName}`);
   const wavFile = fileName.replace('.mp3', '.wav');
-  await execCommand(
-    `ffmpeg -y -i ${fileName} ${wavFile}`
-  );
-  console.log(`Conversion done in ${new Date().getTime() - time}ms`);
   
+  await execCommand(`ffmpeg -y -i ${fileName} ${wavFile}`);
+  console.log(`Conversion done in ${new Date().getTime() - time}ms`);
+
   const jsonFile = fileName.replace('.mp3', '.json');
-  await execCommand(
-    `.\\audios\\rhubarb.exe -f json -o ${jsonFile} ${wavFile} -r phonetic`
-  );
+  await execCommand(`.\\audios\\rhubarb.exe -f json -o ${jsonFile} ${wavFile} -r phonetic`);
   console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
   return jsonFile;
 };
@@ -103,10 +92,10 @@ let conversationHistory = [];
 async function run(userMessage) {
   try {
     const prompt = `
-      You are a mental health counselor whose job is to relive stress of person and provide solutions to their problems.
+      You are a mental health counselor whose job is to relieve stress of the person and provide solutions to their problems.
       Your name is Lisa.
-      Your behvae as per the emotions of users.
-      You can also tell Jokes, poem, Phrases if needed to cheer them up.
+      You behave as per the emotions of users.
+      You can also tell jokes, poems, phrases if needed to cheer them up.
       You will always reply with a JSON array of messages. With a maximum of 3 messages.
       Each message has a text, facialExpression, and animation property.
       The different facial expressions are: smile, sad, angry, default.
@@ -120,7 +109,6 @@ async function run(userMessage) {
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = await response.text();
-    console.log(text);
 
     const jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
     let messages = JSON.parse(jsonText);
@@ -133,9 +121,9 @@ async function run(userMessage) {
       const message = messages[i];
       const fileName = `audios/message_${i}.mp3`;
       const textInput = message.text;
-    
+
       try {
-        await createAudioFileFromText(textInput, fileName); 
+        await createAudioFileFromText(textInput, fileName);
         const jsonFile = await lipSyncMessage(fileName);
         message.audio = await audioFileToBase64(fileName);
         message.lipsync = await readJsonTranscript(jsonFile);
@@ -145,7 +133,6 @@ async function run(userMessage) {
         message.lipsync = null;
       }
     }
-    
 
     conversationHistory = [...conversationHistory, `User: ${userMessage}`, ...messages.map(m => `Lisa: ${m.text}`)];
     return messages;
