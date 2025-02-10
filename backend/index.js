@@ -7,11 +7,15 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ElevenLabsClient } from 'elevenlabs';
 import { PassThrough } from 'stream';
 import { writeFile } from 'fs/promises';
+import session from "express-session";
+import passport from "./auth.js";
+import mongoose from 'mongoose';
+import MongoStore from "connect-mongo";
 
 dotenv.config();
 
 const API_KEY = process.env.GEMINI_AI_API_KEY || "-";
-const ELEVENLABS_API_KEY = process.env.EVENLABS_API_KEY;
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 
 const genAI = new GoogleGenerativeAI(API_KEY);
@@ -20,9 +24,85 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 const client = new ElevenLabsClient({ apiKey: ELEVENLABS_API_KEY });
 
 const app = express();
-app.use(express.json());
-app.use(cors());
 const port = 3000;
+app.use(express.json());
+
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => {
+  console.log('Connected to MongoDB');
+})
+.catch((err) => {
+  console.error('Error connecting to MongoDB', err);
+});
+
+app.use(
+  cors({
+    origin: "http://localhost:5173", 
+    credentials: true, 
+  })
+);
+
+app.use(
+  session({
+    secret: "your_secret_key",
+    resave: false,
+    saveUninitialized: true,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI, // Use your MongoDB URI
+      collectionName: "sessions", // The collection where session data will be stored
+    }),
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+app.get("/auth/check", (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json({ user: req.user });
+  } else {
+    res.json({ user: null });
+  }
+});
+
+
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: "/" }),
+  (req, res) => {
+    if (req.user) {
+      res.redirect("http://localhost:5173 ");
+    } else {
+      res.redirect("http://localhost:5173");
+    }
+  }
+);
+
+app.get("/user", (req, res) => {
+  if (req.isAuthenticated()) {
+    res.json(req.user); // Send user info from the session
+  } else {
+    res.status(401).send("User not authenticated");
+  }
+});
+
+app.get('/logout', (req, res) => {
+  req.logout((err) => {
+      if (err) {
+          return next(err);
+      }
+      res.redirect('/');
+  });
+});
+
 
 const execCommand = (command) => {
   return new Promise((resolve, reject) => {
@@ -77,7 +157,7 @@ const lipSyncMessage = async (fileName) => {
   const time = new Date().getTime();
   console.log(`Starting conversion for file ${fileName}`);
   const wavFile = fileName.replace('.mp3', '.wav');
-  
+
   await execCommand(`ffmpeg -y -i ${fileName} ${wavFile}`);
   console.log(`Conversion done in ${new Date().getTime() - time}ms`);
 
