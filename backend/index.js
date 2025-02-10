@@ -40,7 +40,7 @@ mongoose.connect(process.env.MONGO_URI, {
 
 app.use(
   cors({
-    origin: "http://localhost:5173", 
+    origin: process.env.FRONTEND_URL, 
     credentials: true, 
   })
 );

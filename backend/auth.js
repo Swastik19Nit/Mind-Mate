@@ -14,10 +14,7 @@ passport.use(
         },
         async (accessToken, refreshToken, profile, done) => {
             try {
-                // Check if the user already exists in the database
                 let user = await User.findOne({ email: profile.emails[0].value });
-
-                // If the user doesn't exist, create a new one
                 if (!user) {
                     user = new User({
                         name: profile.displayName,
