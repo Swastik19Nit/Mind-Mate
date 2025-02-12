@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 <s> SIL
 </s> SIL
 <sil> SIL
@@ -8,14 +7,3 @@
 [SMACK] +SMACK+
 [UH] +UH+
 [UM] +UM+
-=======
-<s> SIL
-</s> SIL
-<sil> SIL
-[BREATH] +BREATH+
-[COUGH] +COUGH+
-[NOISE] +NOISE+
-[SMACK] +SMACK+
-[UH] +UH+
-[UM] +UM+
->>>>>>> eda34995b3c88478726e9d56eb4e464903861058

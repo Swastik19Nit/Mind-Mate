@@ -2,20 +2,22 @@ import { exec } from "child_process";
 import cors from "cors";
 import * as dotenv from "dotenv";
 import express from "express";
-import { promises as fs } from "fs";
+// import { promises as fs } from "fs";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ElevenLabsClient } from 'elevenlabs';
 import { PassThrough } from 'stream';
-import { writeFile } from 'fs/promises';
+import fs from 'fs/promises';
 import session from "express-session";
 import passport from "./auth.js";
 import mongoose from 'mongoose';
 import MongoStore from "connect-mongo";
+import {createWriteStream} from 'fs';
+
 
 dotenv.config();
 
 const API_KEY = process.env.GEMINI_AI_API_KEY || "-";
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const ELEVENLABS_API_KEY = process.env.ELEVEN_LABS_API_KEY;
 const VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 
 const genAI = new GoogleGenerativeAI(API_KEY);
@@ -103,6 +105,20 @@ app.get('/logout', (req, res) => {
   });
 });
 
+app.get('/chats', async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const chats = await Chat.find({ user: req.user._id })
+      .sort({ lastMessageAt: -1 });
+    res.json(chats);
+  } catch (error) {
+    console.error('Error fetching chats:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 const execCommand = (command) => {
   return new Promise((resolve, reject) => {
@@ -112,6 +128,7 @@ const execCommand = (command) => {
     });
   });
 };
+
 
 const createAudioFileFromText = async (text, fileName) => {
   try {
@@ -126,32 +143,31 @@ const createAudioFileFromText = async (text, fileName) => {
       modelId: 'eleven_monolingual_v2'
     });
 
-    if (audioResponse instanceof PassThrough) {
-      const chunks = [];
+    return new Promise((resolve, reject) => {
+      if (audioResponse instanceof PassThrough) {
+        const fileStream = createWriteStream(fileName);
+        
+        audioResponse.pipe(fileStream);
 
-      audioResponse.on('data', (chunk) => {
-        chunks.push(chunk);
-      });
+        fileStream.on('finish', () => {
+          console.log(`Audio file created: ${fileName}`);
+          resolve(fileName);
+        });
 
-      audioResponse.on('end', async () => {
-        const audioBuffer = Buffer.concat(chunks);
-        await writeFile(fileName, audioBuffer);
-        console.log(`Audio file created: ${fileName}`);
-      });
-
-      audioResponse.on('error', (err) => {
-        console.error('Error processing the audio stream:', err);
-      });
-    } else {
-      throw new Error('Audio response is not a stream');
-    }
-
-    return fileName;
+        fileStream.on('error', (err) => {
+          console.error('Error writing audio file:', err);
+          reject(err);
+        });
+      } else {
+        reject(new Error('Audio response is not a stream'));
+      }
+    });
   } catch (error) {
     console.error('Error in createAudioFileFromText:', error);
     throw error;
   }
 };
+
 
 const lipSyncMessage = async (fileName) => {
   const time = new Date().getTime();
@@ -201,11 +217,11 @@ async function run(userMessage) {
       const message = messages[i];
       const fileName = `audios/message_${i}.mp3`;
       const textInput = message.text;
-
+    
       try {
-        await createAudioFileFromText(textInput, fileName);
-        const jsonFile = await lipSyncMessage(fileName);
-        message.audio = await audioFileToBase64(fileName);
+        const generatedFile = await createAudioFileFromText(textInput, fileName);
+        const jsonFile = await lipSyncMessage(generatedFile);
+        message.audio = await audioFileToBase64(generatedFile);
         message.lipsync = await readJsonTranscript(jsonFile);
       } catch (error) {
         console.error('Error processing message:', error);
@@ -213,6 +229,7 @@ async function run(userMessage) {
         message.lipsync = null;
       }
     }
+    
 
     conversationHistory = [...conversationHistory, `User: ${userMessage}`, ...messages.map(m => `Lisa: ${m.text}`)];
     return messages;
@@ -279,3 +296,4 @@ const audioFileToBase64 = async (file) => {
 app.listen(port, () => {
   console.log(`Bot listening on port ${port}`);
 });
+
