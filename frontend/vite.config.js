@@ -1,15 +1,25 @@
-// vite.config.js
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    include: [
+      'react', 
+      'react-dom', 
+      'three', 
+      '@react-three/fiber', 
+      '@react-three/drei'
+    ], 
+  },
   build: {
     chunkSizeWarningLimit: 1600,
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // Vendor chunks
           if (id.includes('node_modules')) {
             if (id.includes('three') || 
                 id.includes('@react-three/fiber') || 
@@ -22,11 +32,14 @@ export default defineConfig({
             if (id.includes('react')) {
               return 'react-vendor'
             }
-            return 'vendor' // other dependencies
+            return 'vendor'
           }
         }
       }
     }
+  },
+  commonjsOptions: {
+    transformMixedEsModules: true,
   },
   assetsInclude: ['**/*.gltf', '**/*.glb', '**/*.hdr', '**/*.fbx']
 })
