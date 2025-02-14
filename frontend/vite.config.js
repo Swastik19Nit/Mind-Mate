@@ -7,7 +7,6 @@ export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1600,
     rollupOptions: {
-      external: ['react-router-dom'],
       output: {
         manualChunks: (id) => {
           // Vendor chunks
@@ -16,6 +15,9 @@ export default defineConfig({
                 id.includes('@react-three/fiber') || 
                 id.includes('@react-three/drei')) {
               return 'three-vendor'
+            }
+            if (id.includes('react-router-dom')) {
+              return 'router-vendor'
             }
             if (id.includes('react')) {
               return 'react-vendor'
