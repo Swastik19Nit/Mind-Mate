@@ -9,15 +9,22 @@ export default defineConfig({
     rollupOptions: {
       external: ['react-router-dom'],
       output: {
-        manualChunks: {
-          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
-          'react-vendor': ['react', 'react-dom'],
+        manualChunks: (id) => {
+          // Vendor chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('three') || 
+                id.includes('@react-three/fiber') || 
+                id.includes('@react-three/drei')) {
+              return 'three-vendor'
+            }
+            if (id.includes('react')) {
+              return 'react-vendor'
+            }
+            return 'vendor' // other dependencies
+          }
         }
       }
-    },
-    optimizeDeps: {
-      include: ['three', '@react-three/fiber', '@react-three/drei']
     }
   },
-  assetsInclude: ['**/*.gltf', '**/*.glb', '**/*.hdr', '**/*.fbx'],
+  assetsInclude: ['**/*.gltf', '**/*.glb', '**/*.hdr', '**/*.fbx']
 })
