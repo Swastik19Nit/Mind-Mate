@@ -103,15 +103,18 @@ export const UI = ({ hidden }) => {
                   onClick={() => setShowMenu(!showMenu)}
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = "";
+                    e.target.src = ""; // Clear the broken image
+                    e.target.style.display = "none"; // Hide the img element
+                    // Show the fallback initial instead
+                    e.target.parentElement.querySelector('.fallback-initial').style.display = "flex";
                   }}
                 />
               ) : (
                 <div
-                  className="w-10 h-10 flex items-center justify-center bg-gray-300 text-white rounded-full cursor-pointer"
+                  className="w-10 h-10 flex items-center justify-center bg-blue-500 text-white rounded-full cursor-pointer fallback-initial"
                   onClick={() => setShowMenu(!showMenu)}
                 >
-                  {user.name ? user.name.charAt(0).toUpperCase() : "?"}
+                  {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
                 </div>
               )}
 
@@ -129,18 +132,7 @@ export const UI = ({ hidden }) => {
           )}
         </div>
 
-        <div className="w-full flex flex-col items-end justify-center gap-4">
-          <button
-            onClick={() => {
-              const frame = vidRef.current;
-              frame.style.display = Camera ? "none" : "block";
-              setCamera(!Camera);
-            }}
-            className="pointer-events-auto bg-pink-500 hover:bg-pink-600 text-white p-4 rounded-md"
-          >
-            📷 Toggle Camera
-          </button>
-        </div>
+        
 
         <div className="flex items-center gap-2 pointer-events-auto max-w-screen-sm w-full mx-auto">
           <input
@@ -163,6 +155,7 @@ export const UI = ({ hidden }) => {
           >
             {isRecording ? <MicOff size={24} /> : <Mic size={24} />}
           </button>
+
           <button
             disabled={loading || message}
             onClick={sendMessage}
@@ -171,6 +164,16 @@ export const UI = ({ hidden }) => {
             }`}
           >
             Send
+          </button>
+          <button
+            onClick={() => {
+              const frame = vidRef.current;
+              frame.style.display = Camera ? "none" : "block";
+              setCamera(!Camera);
+            }}
+            className="pointer-events-auto bg-pink-500 hover:bg-pink-600 text-white p-4 rounded-md"
+          >
+            📷
           </button>
         </div>
       </div>
