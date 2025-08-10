@@ -1,13 +1,39 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './Header.module.css';
 
 const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-const handleGoogleLogin = () => {
-    window.location.href = `${apiUrl}/auth/google`;
-};
+const Header = ({ navigate }) => {
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-const Header = () => {
+    useEffect(() => {
+        // Check authentication status when component mounts
+        fetch(`${apiUrl}/auth/check`, {
+            credentials: "include",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.user) {
+                setIsAuthenticated(true);
+                if (navigate) {
+                    navigate('/app');
+                }
+            }
+        })
+        .catch(err => console.error('Auth check error:', err));
+    }, [navigate]);
+
+    const handleGoogleLogin = (e) => {
+        e.preventDefault();
+        // Store the intended destination
+        localStorage.setItem('redirectAfterLogin', '/app');
+        window.location.href = `${apiUrl}/auth/google`;
+    };
+
     return (
         <header className={styles.header}>
             <div className={styles.logo}>MindMate</div>
