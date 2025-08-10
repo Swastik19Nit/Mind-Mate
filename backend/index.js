@@ -50,16 +50,18 @@ app.use(
 app.use(
   session({
     secret: "your_secret_key",
-    resave: false,
+    resave: true,
     saveUninitialized: true,
     store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI, // Use your MongoDB URI
-      collectionName: "sessions", // The collection where session data will be stored
+      mongoUrl: process.env.MONGO_URI,
+      collectionName: "sessions",
     }),
     cookie: {
-      secure: process.env.NODE_ENV === "production", // Enable in production (HTTPS required)
-      httpOnly: true, // Prevents JavaScript access to cookies
-      sameSite: "None", // Required for cross-origin cookies
+      secure: false, // Set to true only in production with HTTPS
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: 'lax',
+      path: '/'
     },
   })
 );
@@ -72,27 +74,51 @@ app.get(
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
-app.get("/auth/check", (req, res) => {
-  if (req.isAuthenticated()) {
-    res.json({ user: req.user });
-  } else {
-    res.json({ user: null });
-  }
-});
-
-
 app.get(
   "/auth/google/callback",
   (req, res, next) => {
     console.log("Redirect URI received:", req.originalUrl);
     next();
   },
-  passport.authenticate("google", { failureRedirect: "/" }),
+  passport.authenticate("google", {
+    failureRedirect: "/",
+    failureMessage: true,
+    session: true
+  }),
   (req, res) => {
-    res.redirect(process.env.FRONTEND_URL || "http://localhost:5173/app");
+    // Ensure user is set in session
+    req.session.user = req.user;
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.redirect('/');
+      }
+      const redirectTo = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/app`;
+      console.log('Redirecting to:', redirectTo);
+      res.redirect(redirectTo);
+    });
   }
 );
 
+app.get("/auth/check", (req, res) => {
+  if (req.isAuthenticated() && req.user) {
+    res.json({ user: req.user });
+  } else {
+    res.json({ user: null });
+  }
+});
+
+// Update logout to properly handle session
+app.get('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Logout error:', err);
+    }
+    req.logout(() => {
+      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+    });
+  });
+});
 
 app.get("/user", (req, res) => {
   if (req.isAuthenticated()) {
@@ -100,15 +126,6 @@ app.get("/user", (req, res) => {
   } else {
     res.status(401).send("User not authenticated");
   }
-});
-
-app.get('/logout', (req, res) => {
-  req.logout((err) => {
-      if (err) {
-          return next(err);
-      }
-      res.redirect('/');
-  });
 });
 
 app.get('/chats', async (req, res) => {
