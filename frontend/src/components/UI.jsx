@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useChat } from "../hooks/useChat";
 import { Vid } from "./VideoFeed";
+import { Mic, MicOff } from "lucide-react";
 
 const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000"; 
 
@@ -10,7 +11,44 @@ export const UI = ({ hidden }) => {
   const [user, setUser] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [Camera, setCamera] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const vidRef = useRef();
+
+  // Speech recognition setup
+  const recognition = useRef(null);
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window) {
+      recognition.current = new webkitSpeechRecognition();
+      recognition.current.continuous = true;
+      recognition.current.interimResults = true;
+
+      recognition.current.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0])
+          .map(result => result.transcript)
+          .join('');
+        input.current.value = transcript;
+      };
+
+      recognition.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsRecording(false);
+      };
+
+      recognition.current.onend = () => {
+        setIsRecording(false);
+      };
+    }
+  }, []);
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      recognition.current?.stop();
+    } else {
+      recognition.current?.start();
+    }
+    setIsRecording(!isRecording);
+  };
 
   useEffect(() => {
     fetch(`${apiUrl}/user`, {
@@ -115,6 +153,16 @@ export const UI = ({ hidden }) => {
               }
             }}
           />
+          <button
+            onClick={toggleRecording}
+            className={`p-4 rounded-md ${
+              isRecording 
+                ? 'bg-red-500 hover:bg-red-600' 
+                : 'bg-blue-500 hover:bg-blue-600'
+            } text-white`}
+          >
+            {isRecording ? <MicOff size={24} /> : <Mic size={24} />}
+          </button>
           <button
             disabled={loading || message}
             onClick={sendMessage}
