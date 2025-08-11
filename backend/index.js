@@ -2,7 +2,6 @@ import { exec } from "child_process";
 import cors from "cors";
 import * as dotenv from "dotenv";
 import express from "express";
-// import { promises as fs } from "fs";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ElevenLabsClient } from 'elevenlabs';
 import { PassThrough } from 'stream';
@@ -12,6 +11,7 @@ import passport from "./auth.js";
 import mongoose from 'mongoose';
 import MongoStore from "connect-mongo";
 import {createWriteStream} from 'fs';
+import Chat from './models/Chats.js';
 
 
 dotenv.config();
@@ -267,39 +267,99 @@ app.get("/", (req, res) => {
 });
 
 app.post("/chat", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
   try {
     const userMessage = req.body.message;
+    let chat;
+
     if (!userMessage) {
-      res.send({
-        messages: [
-          {
-            text: "How can I help you?",
-            audio: await audioFileToBase64("audios/intro_0.wav"),
-            lipsync: await readJsonTranscript("audios/intro_0.json"),
-            facialExpression: "smile",
-            animation: "Talking_1",
-          }
-        ],
+      const introMessage = {
+        text: "How can I help you?",
+        audio: await audioFileToBase64("audios/intro_0.wav"),
+        lipsync: await readJsonTranscript("audios/intro_0.json"),
+        facialExpression: "smile",
+        animation: "Talking_1",
+        sender: "bot"
+      };
+
+      // Create a new chat for the intro message
+      chat = new Chat({
+        user: req.user._id,
+        messages: [introMessage],
+        startedAt: new Date(),
+        lastMessageAt: new Date()
       });
-      return;
-    }
-    if (!ELEVENLABS_API_KEY || API_KEY === "-") {
-      res.send({
-        messages: [
-          {
-            text: "Please, don't forget to add your API keys!",
-            audio: await audioFileToBase64("audios/api_0.wav"),
-            lipsync: await readJsonTranscript("audios/api_0.json"),
-            facialExpression: "angry",
-            animation: "Angry",
-          }
-        ],
-      });
+      await chat.save();
+
+      res.send({ messages: [introMessage] });
       return;
     }
 
-    const messages = await run(userMessage);
-    res.send({ messages });
+    if (!ELEVENLABS_API_KEY || API_KEY === "-") {
+      const apiErrorMessage = {
+        text: "Please, don't forget to add your API keys!",
+        audio: await audioFileToBase64("audios/api_0.wav"),
+        lipsync: await readJsonTranscript("audios/api_0.json"),
+        facialExpression: "angry",
+        animation: "Angry",
+        sender: "bot"
+      };
+
+      chat = new Chat({
+        user: req.user._id,
+        messages: [
+          { text: userMessage, sender: "user" },
+          apiErrorMessage
+        ],
+        startedAt: new Date(),
+        lastMessageAt: new Date()
+      });
+      await chat.save();
+
+      res.send({ messages: [apiErrorMessage] });
+      return;
+    }
+
+    // Get bot response messages
+    const botMessages = await run(userMessage);
+    
+    // Format messages for storage
+    const formattedMessages = [
+      { text: userMessage, sender: "user" },
+      ...botMessages.map(msg => ({
+        ...msg,
+        sender: "bot"
+      }))
+    ];
+
+    // Find existing chat from today or create new one
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    chat = await Chat.findOne({
+      user: req.user._id,
+      startedAt: { $gte: startOfDay }
+    });
+
+    if (chat) {
+      // Add to existing chat
+      chat.messages.push(...formattedMessages);
+      chat.lastMessageAt = new Date();
+    } else {
+      // Create new chat
+      chat = new Chat({
+        user: req.user._id,
+        messages: formattedMessages,
+        startedAt: new Date(),
+        lastMessageAt: new Date()
+      });
+    }
+    
+    await chat.save();
+    res.send({ messages: botMessages });
   } catch (error) {
     console.error('Error in chat endpoint:', error);
     res.status(500).send({ error: 'Internal server error' });

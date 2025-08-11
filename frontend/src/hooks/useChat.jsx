@@ -6,22 +6,40 @@ const ChatContext = createContext();
 
 export const ChatProvider = ({ children }) => {
   const chat = async (message) => {
-    setLoading(true);
-    const data = await fetch(`${apiUrl}/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ message }),
-    });
-    const resp = (await data.json()).messages;
-    setMessages((messages) => [...messages, ...resp]);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const response = await fetch(`${apiUrl}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ message }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      const data = await response.json();
+      
+      if (data.messages && Array.isArray(data.messages)) {
+        setMessages(prevMessages => [...prevMessages, ...data.messages]);
+      } else {
+        console.error('Invalid response format:', data);
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
   const [messages, setMessages] = useState([]);
-  const [message, setMessage] = useState();
+  const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
-  // const [cameraZoomed, setCameraZoomed] = useState(true);
+
   const onMessagePlayed = () => {
     setMessages((messages) => messages.slice(1));
   };
@@ -41,8 +59,6 @@ export const ChatProvider = ({ children }) => {
         message,
         onMessagePlayed,
         loading,
-        // cameraZoomed,
-        // setCameraZoomed,
       }}
     >
       {children}
