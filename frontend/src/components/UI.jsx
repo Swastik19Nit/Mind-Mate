@@ -108,27 +108,28 @@ export const UI = ({ hidden }) => {
               
               {user && (
                 <div className="relative ml-4 pointer-events-auto">
-                  {user.picture ? (
+                  <div
+                    className="w-10 h-10 flex items-center justify-center bg-blue-500 text-white rounded-full cursor-pointer fallback-initial"
+                    style={{ display: user.picture ? 'none' : 'flex' }}
+                    onClick={() => setShowMenu(!showMenu)}
+                  >
+                    {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+                  </div>
+                  {user.picture && (
                     <img
                       src={user.picture}
                       alt="Profile"
-                      className="z-10 w-10 h-10 rounded-full cursor-pointer"
+                      className="absolute top-0 left-0 z-10 w-10 h-10 rounded-full cursor-pointer"
                       onClick={() => setShowMenu(!showMenu)}
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = ""; // Clear the broken image
-                        e.target.style.display = "none"; // Hide the img element
-                        // Show the fallback initial instead
-                        e.target.parentElement.querySelector('.fallback-initial').style.display = "flex";
+                        e.target.style.display = 'none';
+                        const fallback = e.target.previousSibling;
+                        if (fallback) {
+                          fallback.style.display = 'flex';
+                        }
                       }}
                     />
-                  ) : (
-                    <div
-                      className="w-10 h-10 flex items-center justify-center bg-blue-500 text-white rounded-full cursor-pointer fallback-initial"
-                      onClick={() => setShowMenu(!showMenu)}
-                    >
-                      {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
-                    </div>
                   )}
 
                   {showMenu && (

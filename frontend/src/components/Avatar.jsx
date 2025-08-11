@@ -66,11 +66,10 @@ export function Avatar(props) {
   );
 
   const { message, onMessagePlayed, chat } = useChat();
-
   const [lipsync, setLipsync] = useState();
+  const currentAnimation = useRef(null);
 
   useEffect(() => {
-    console.log(message);
     if (!message) {
       setAnimation("Idle");
       return;
@@ -90,13 +89,33 @@ export function Avatar(props) {
   const [animation, setAnimation] = useState(
     animations.find((a) => a.name === "Idle") ? "Idle" : animations[0].name
   );
+
+  // Handle animation changes safely
   useEffect(() => {
-    actions[animation]
-      .reset()
-      .fadeIn(mixer.stats.actions.inUse === 0 ? 0 : 0.5)
-      .play();
-    return () => actions[animation].fadeOut(0.5);
-  }, [animation]);
+    // Cleanup previous animation
+    if (currentAnimation.current && actions[currentAnimation.current]) {
+      const prevAction = actions[currentAnimation.current];
+      if (prevAction.fadeOut) {
+        prevAction.fadeOut(0.5);
+      }
+    }
+
+    // Start new animation
+    if (actions[animation]) {
+      const nextAction = actions[animation];
+      nextAction.reset().fadeIn(mixer.stats.actions.inUse === 0 ? 0 : 0.5).play();
+      currentAnimation.current = animation;
+    }
+
+    return () => {
+      if (currentAnimation.current && actions[currentAnimation.current]) {
+        const action = actions[currentAnimation.current];
+        if (action.fadeOut) {
+          action.fadeOut(0.5);
+        }
+      }
+    };
+  }, [animation, actions, mixer.stats.actions.inUse]);
 
   const lerpMorphTarget = (target, value, speed = 0.1) => {
     scene.traverse((child) => {
