@@ -1,10 +1,8 @@
 import { useAnimations, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-// import { button, useControls } from "leva";
-import React, { useEffect, useRef, useState } from "react";
-
-import * as THREE from "three";
+import { useEffect, useRef, useState } from "react";
 import { useChat } from "../hooks/useChat";
+import * as THREE from 'three';
 
 const facialExpressions = {
   default: {},

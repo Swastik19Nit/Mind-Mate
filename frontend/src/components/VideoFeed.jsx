@@ -1,44 +1,43 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef } from "react";
 
 export const Vid = () => {
   const videoRef = useRef();
 
   useEffect(() => {
-    const constraints = { video: true };
+    let stream = null;
 
-    async function getMediaStream() {
+    const startVideo = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
-      } catch (error) {
-        console.error('Error accessing user media:', error);
+      } catch (err) {
+        console.error("Error accessing webcam:", err);
       }
-    }
+    };
 
-    getMediaStream();
+    startVideo();
 
+    // Cleanup function
     return () => {
-      if (videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject;
+      if (stream) {
         const tracks = stream.getTracks();
-
-        tracks.forEach(track => {
-          track.stop();
-        });
+        tracks.forEach(track => track.stop());
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
       }
     };
   }, []);
 
-  const testStyle={
-    textAlign : 'center',
-    color : 'white',
-  }
   return (
-    <>
-    <video ref={videoRef} autoPlay playsInline  />
-    <h1 style={testStyle}>Happy</h1>
-    </>
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      muted
+      className="rounded-lg w-[300px] h-[200px] object-cover"
+    />
   );
-}
+};
