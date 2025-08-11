@@ -1,8 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import { useChat } from "../hooks/useChat";
 import { Vid } from "./VideoFeed";
-import { Mic, MicOff, History } from "lucide-react";
-import ChatHistoryModal from "./ChatHistorySidebar";  // The file is still named ChatHistorySidebar.jsx but exports ChatHistoryModal
+import { Mic, MicOff, History, LogOut, User } from "lucide-react";
+import ChatHistoryModal from "./ChatHistorySidebar";
 
 const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000"; 
 
@@ -53,15 +53,24 @@ export const UI = ({ hidden }) => {
   };
 
   useEffect(() => {
-    fetch(`${apiUrl}/user`, {
-      credentials: "include"
-    })
+    // Fetch user data when component mounts
+    fetch(`${apiUrl}/user`, { credentials: "include" })
       .then((res) => res.json())
       .then((userData) => {
         setUser(userData);
       })
       .catch((err) => console.error('Error fetching user:', err));
-  }, []);
+
+    // Close menu when clicking outside
+    const handleClickOutside = (event) => {
+      if (showMenu && !event.target.closest('.profile-menu')) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showMenu]);
 
   const sendMessage = () => {
     const text = input.current.value;
@@ -72,12 +81,10 @@ export const UI = ({ hidden }) => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    setUser(null);
-
     fetch(`${apiUrl}/logout`, { credentials: "include" })
       .then(() => {
-        window.location.reload();
+        localStorage.removeItem("user");
+        window.location.href = "/";
       })
       .catch(err => console.error("Logout failed:", err));
   };
@@ -97,7 +104,7 @@ export const UI = ({ hidden }) => {
               <p>Your Path to Mental Wellness</p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => setShowChatHistory(true)}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -107,38 +114,41 @@ export const UI = ({ hidden }) => {
               </button>
               
               {user && (
-                <div className="relative ml-4 pointer-events-auto">
+                <div className="profile-menu relative">
                   <div
-                    className="w-10 h-10 flex items-center justify-center bg-blue-500 text-white rounded-full cursor-pointer fallback-initial"
-                    style={{ display: user.picture ? 'none' : 'flex' }}
+                    className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-100 rounded-lg"
                     onClick={() => setShowMenu(!showMenu)}
                   >
-                    {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                      {user.picture ? (
+                        <img
+                          src={user.picture}
+                          alt="Profile"
+                          className="w-full h-full rounded-full"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : (
+                        <User size={20} />
+                      )}
+                    </div>
+                    <span className="font-medium">{user.name || user.email}</span>
                   </div>
-                  {user.picture && (
-                    <img
-                      src={user.picture}
-                      alt="Profile"
-                      className="absolute top-0 left-0 z-10 w-10 h-10 rounded-full cursor-pointer"
-                      onClick={() => setShowMenu(!showMenu)}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.style.display = 'none';
-                        const fallback = e.target.previousSibling;
-                        if (fallback) {
-                          fallback.style.display = 'flex';
-                        }
-                      }}
-                    />
-                  )}
 
                   {showMenu && (
-                    <div className="absolute right-0 mt-2 w-32 bg-white border rounded-lg shadow-lg z-50">
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border overflow-hidden">
+                      <div className="p-3 border-b">
+                        <p className="font-medium">{user.name}</p>
+                        <p className="text-sm text-gray-500">{user.email}</p>
+                      </div>
                       <button
                         onClick={handleLogout}
-                        className="block w-full px-4 py-2 text-left hover:bg-gray-200"
+                        className="w-full px-4 py-2 text-left text-red-600 hover:bg-gray-50 flex items-center gap-2"
                       >
-                        Logout
+                        <LogOut size={18} />
+                        <span>Logout</span>
                       </button>
                     </div>
                   )}
@@ -147,8 +157,10 @@ export const UI = ({ hidden }) => {
             </div>
           </div>
 
-          {/* Bottom Input Area */}
+          {/* Chat Messages */}
           <div className="flex-grow" />
+
+          {/* Input Area */}
           <div className="w-full max-w-screen-sm mx-auto flex items-center gap-2">
             <input
               className="flex-1 placeholder:text-gray-800 placeholder:italic p-4 rounded-md bg-white shadow-lg"
@@ -193,7 +205,6 @@ export const UI = ({ hidden }) => {
         </div>
       </div>
 
-      {/* Chat History Modal */}
       <ChatHistoryModal 
         isOpen={showChatHistory} 
         onClose={() => setShowChatHistory(false)} 
