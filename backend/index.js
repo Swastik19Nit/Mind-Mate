@@ -266,6 +266,36 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
+// Utility function to prune old chats
+async function pruneOldChats(userId) {
+  const userChats = await Chat.find({ user: userId }).sort({ lastMessageAt: -1 });
+  
+  if (userChats.length > 30) {
+    // Get chats to remove
+    const chatsToRemove = userChats.slice(30);
+    
+    // Remove chats with low importance
+    await Chat.deleteMany({
+      _id: { $in: chatsToRemove.map(c => c._id) },
+      importance: { $lt: 7 } // Keep important chats even if they're old
+    });
+  }
+}
+
+// Utility function to get chat context
+async function getChatContext(userId) {
+  const recentChats = await Chat.find({ user: userId })
+    .sort({ lastMessageAt: -1 })
+    .limit(5);
+    
+  return recentChats.map(chat => ({
+    summary: chat.contextSummary,
+    topics: chat.topics,
+    emotions: chat.emotions,
+    lastMessageAt: chat.lastMessageAt
+  }));
+}
+
 app.post("/chat", async (req, res) => {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -275,6 +305,14 @@ app.post("/chat", async (req, res) => {
     const userMessage = req.body.message;
     let chat;
 
+    // Get chat context for AI
+    const chatContext = await getChatContext(req.user._id);
+    
+    // Add context to conversation history
+    const contextPrompt = chatContext
+      .map(ctx => `Previous context: ${ctx.summary}`)
+      .join('\n');
+    
     if (!userMessage) {
       const introMessage = {
         text: "How can I help you?",
@@ -323,8 +361,24 @@ app.post("/chat", async (req, res) => {
       return;
     }
 
-    // Get bot response messages
-    const botMessages = await run(userMessage);
+    // Get bot response messages with context
+    const prompt = `
+      ${contextPrompt}
+      
+      You are a mental health counselor whose job is to relieve stress of the person and provide solutions to their problems.
+      Your name is Lisa.
+      You behave as per the emotions of users.
+      You can also tell jokes, poems, phrases if needed to cheer them up.
+      You will always reply with a JSON array of messages. With a maximum of 3 messages.
+      Each message has a text, facialExpression, and animation property.
+      The different facial expressions are: smile, sad, angry, default.
+      The different animations are: Talking_1, Laughing, Idle, and Angry.
+
+      Conversation history: ${conversationHistory.join('\n')}
+      User message: ${userMessage}
+    `;
+
+    const botMessages = await run(prompt);
     
     // Format messages for storage
     const formattedMessages = [
@@ -345,11 +399,9 @@ app.post("/chat", async (req, res) => {
     });
 
     if (chat) {
-      // Add to existing chat
       chat.messages.push(...formattedMessages);
       chat.lastMessageAt = new Date();
     } else {
-      // Create new chat
       chat = new Chat({
         user: req.user._id,
         messages: formattedMessages,
@@ -358,8 +410,23 @@ app.post("/chat", async (req, res) => {
       });
     }
     
+    // Generate chat summary and calculate importance
+    chat.generateSummary();
+    chat.calculateImportance();
     await chat.save();
-    res.send({ messages: botMessages });
+    
+    // Prune old chats if needed
+    await pruneOldChats(req.user._id);
+    
+    res.send({ 
+      messages: botMessages,
+      context: {
+        summary: chat.contextSummary,
+        topics: chat.topics,
+        emotions: chat.emotions
+      }
+    });
+
   } catch (error) {
     console.error('Error in chat endpoint:', error);
     res.status(500).send({ error: 'Internal server error' });
