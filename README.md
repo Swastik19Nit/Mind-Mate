@@ -33,3 +33,6 @@ Integration of Emotion Detection with Chat Bot: Personalize responses based on u
 User Chat Data Storage: Improve user experience and content optimization through behavioral analysis and personalization.
 
 Speech Input from Users: Enable natural interaction by allowing users to input through speech using speech recognition technology.
+
+Please refer to [Detailed Process Flow: User Session, Context Generation, and Cross-Session Memory](https://github.com/Swastik19Nit/Mind-Mate/issues/7) to understand the detailed process flow.
+
