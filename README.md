@@ -34,5 +34,8 @@ User Chat Data Storage: Improve user experience and content optimization through
 
 Speech Input from Users: Enable natural interaction by allowing users to input through speech using speech recognition technology.
 
+<img width="1114" height="492" alt="image" src="https://github.com/user-attachments/assets/0f1c0a5f-4234-46ea-b807-d7b1ec07ee54" />
+
+
 Please refer to [Detailed Process Flow: User Session, Context Generation, and Cross-Session Memory](https://github.com/Swastik19Nit/Mind-Mate/issues/7) to understand the detailed process flow.
 
