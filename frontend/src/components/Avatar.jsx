@@ -94,16 +94,22 @@ const noise = (t, seed = 0) =>
   Math.sin(t * 0.6 + seed * 0.4) * 0.2;
 
 export function Avatar({ modelVariant = "default", ...props }) {
-  const rpm    = useGLTF("/models/64f1a714fe61576b46f27ca2.glb");
-  const swastik = useGLTF("/models/swastik.glb");
-  const { animations } = useGLTF("/models/animations.glb");
+  const rpm         = useGLTF("/models/64f1a714fe61576b46f27ca2.glb");
+  const swastik     = useGLTF("/models/swastik.glb");
+  const rpmAnims    = useGLTF("/models/animations.glb");
+  const swastikAnims = useGLTF("/models/swastik_anim.glb");
 
   const isSwastik = modelVariant === "swastik";
   const { nodes, materials, scene } = isSwastik ? swastik : rpm;
 
+  const animations = isSwastik ? swastikAnims.animations : rpmAnims.animations;
+
   const { message, onMessagePlayed } = useChat();
   const group = useRef();
   const { actions: animActions } = useAnimations(animations, group);
+
+  // Swastik always uses its own animation — RPM clip names map to avaturn_animation
+  const resolveAnim = (name) => isSwastik ? "avaturn_animation" : name;
 
   const [animation, setAnimation]               = useState("Idle");
   const [facialExpression, setFacialExpression] = useState("default");
@@ -115,6 +121,7 @@ export function Avatar({ modelVariant = "default", ...props }) {
   const currentAnimRef = useRef(null);
   const morphMeshes    = useRef({});
   const bones          = useRef({});
+  const restPose       = useRef({});
   const eyeTarget      = useRef({ x: 0, y: 0 });
   const saccadeTimer   = useRef(THREE.MathUtils.randFloat(1, 3));
 
@@ -132,13 +139,20 @@ export function Avatar({ modelVariant = "default", ...props }) {
     morphMeshes.current = map;
   }, [scene]);
 
-  // ─── Cache bone refs ──────────────────────────────────────────────────────
+  // ─── Cache bone refs + rest pose rotations ───────────────────────────────
   useEffect(() => {
     bones.current = {};
-    ["Spine","Spine1","Spine2","Neck","Head","Hips","LeftShoulder","RightShoulder"]
-      .forEach((name) => {
+    restPose.current = {};
+    [
+      "Spine","Spine1","Spine2","Neck","Head","Hips",
+      "LeftShoulder","RightShoulder",
+      "LeftArm","RightArm","LeftForeArm","RightForeArm",
+    ].forEach((name) => {
         const bone = scene.getObjectByName(name);
-        if (bone) bones.current[name] = bone;
+        if (bone) {
+          bones.current[name] = bone;
+          restPose.current[name] = { x: bone.rotation.x, y: bone.rotation.y, z: bone.rotation.z };
+        }
       });
   }, [scene]);
 
@@ -155,20 +169,21 @@ export function Avatar({ modelVariant = "default", ...props }) {
     }
   }, []);
 
-  // ─── Crossfade animations ─────────────────────────────────────────────────
+  // ─── Play animations ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (!animActions[animation]) return;
-    const next = animActions[animation];
-    const prevName = currentAnimRef.current;
-    const prev = prevName ? animActions[prevName] : null;
+    const clipName = resolveAnim(animation);
+    if (!animActions[clipName]) return;
+    const next = animActions[clipName];
+    const prevClip = currentAnimRef.current;
+    const prev = prevClip ? animActions[prevClip] : null;
     next.reset().setEffectiveTimeScale(1).setEffectiveWeight(1);
-    if (prev && prevName !== animation) {
+    if (prev && prevClip !== clipName) {
       next.play();
       prev.crossFadeTo(next, 0.4, true);
     } else {
       next.fadeIn(0.3).play();
     }
-    currentAnimRef.current = animation;
+    currentAnimRef.current = clipName;
   }, [animation, animActions]);
 
   // ─── Handle incoming message ──────────────────────────────────────────────
@@ -259,40 +274,44 @@ export function Avatar({ modelVariant = "default", ...props }) {
     }
     for (const [v, w] of Object.entries(visemeWeights)) lerpMorphTarget(v, w, 12, d);
 
-    // Saccadic eye movement
-    saccadeTimer.current -= d;
-    if (saccadeTimer.current <= 0) {
-      eyeTarget.current = {
-        x: THREE.MathUtils.randFloat(-0.25, 0.25),
-        y: THREE.MathUtils.randFloat(-0.1, 0.15),
-      };
-      saccadeTimer.current = THREE.MathUtils.randFloat(1.5, 5);
+    // Saccadic eye movement (RPM only — Avaturn Eye_Mesh uses bone-driven eyes)
+    if (!isSwastik) {
+      saccadeTimer.current -= d;
+      if (saccadeTimer.current <= 0) {
+        eyeTarget.current = {
+          x: THREE.MathUtils.randFloat(-0.25, 0.25),
+          y: THREE.MathUtils.randFloat(-0.1, 0.15),
+        };
+        saccadeTimer.current = THREE.MathUtils.randFloat(1.5, 5);
+      }
+      const ex = eyeTarget.current.x, ey = eyeTarget.current.y;
+      lerpMorphTarget("eyeLookOutLeft",   Math.max(-ex, 0) * 0.4, 8, d);
+      lerpMorphTarget("eyeLookInLeft",    Math.max(ex, 0)  * 0.4, 8, d);
+      lerpMorphTarget("eyeLookOutRight",  Math.max(ex, 0)  * 0.4, 8, d);
+      lerpMorphTarget("eyeLookInRight",   Math.max(-ex, 0) * 0.4, 8, d);
+      lerpMorphTarget("eyeLookUpLeft",    Math.max(ey, 0)  * 0.3, 8, d);
+      lerpMorphTarget("eyeLookDownLeft",  Math.max(-ey, 0) * 0.3, 8, d);
+      lerpMorphTarget("eyeLookUpRight",   Math.max(ey, 0)  * 0.3, 8, d);
+      lerpMorphTarget("eyeLookDownRight", Math.max(-ey, 0) * 0.3, 8, d);
     }
-    const ex = eyeTarget.current.x, ey = eyeTarget.current.y;
-    lerpMorphTarget("eyeLookOutLeft",   Math.max(-ex, 0) * 0.4, 8, d);
-    lerpMorphTarget("eyeLookInLeft",    Math.max(ex, 0)  * 0.4, 8, d);
-    lerpMorphTarget("eyeLookOutRight",  Math.max(ex, 0)  * 0.4, 8, d);
-    lerpMorphTarget("eyeLookInRight",   Math.max(-ex, 0) * 0.4, 8, d);
-    lerpMorphTarget("eyeLookUpLeft",    Math.max(ey, 0)  * 0.3, 8, d);
-    lerpMorphTarget("eyeLookDownLeft",  Math.max(-ey, 0) * 0.3, 8, d);
-    lerpMorphTarget("eyeLookUpRight",   Math.max(ey, 0)  * 0.3, 8, d);
-    lerpMorphTarget("eyeLookDownRight", Math.max(-ey, 0) * 0.3, 8, d);
 
     // Procedural body
     const talking = isTalking.current;
     const breathAmt = Math.sin(t * (talking ? 0.35 : 0.2) * Math.PI * 2);
+
+    // ── Shared: breathing ────────────────────────────────────────────────────
     if (bones.current.Spine)         bones.current.Spine.rotation.x         += breathAmt * 0.006;
     if (bones.current.Spine1)        bones.current.Spine1.rotation.x        += breathAmt * 0.009;
     if (bones.current.LeftShoulder)  bones.current.LeftShoulder.rotation.z  += breathAmt * 0.004;
     if (bones.current.RightShoulder) bones.current.RightShoulder.rotation.z -= breathAmt * 0.004;
 
-    if (!talking) {
-      if (bones.current.Hips) {
-        bones.current.Hips.rotation.x += noise(t * 0.10, 0) * 0.012;
-        bones.current.Hips.rotation.z += noise(t * 0.07, 3) * 0.008;
-      }
+    // ── Shared: idle sway ────────────────────────────────────────────────────
+    if (!talking && bones.current.Hips) {
+      bones.current.Hips.rotation.x += noise(t * 0.10, 0) * 0.012;
+      bones.current.Hips.rotation.z += noise(t * 0.07, 3) * 0.008;
     }
 
+    // ── Shared: head movement ────────────────────────────────────────────────
     if (talking) {
       const bob = Math.sin(t * 4.0) * 0.012 + noise(t * 0.5, 7) * 0.006;
       if (bones.current.Head) bones.current.Head.rotation.x += bob;
@@ -301,6 +320,46 @@ export function Avatar({ modelVariant = "default", ...props }) {
       if (bones.current.Head) {
         bones.current.Head.rotation.y += noise(t * 0.08, 2) * 0.005;
         bones.current.Head.rotation.z += noise(t * 0.05, 5) * 0.003;
+      }
+    }
+
+    // ── Swastik only: expressive procedural layer ────────────────────────────
+    if (isSwastik) {
+      // Emotional head tilt based on current expression
+      if (bones.current.Head) {
+        if (facialExpression === "sad" || facialExpression === "empathetic") {
+          bones.current.Head.rotation.z += 0.08;   // tilt to side
+          bones.current.Head.rotation.x += 0.04;   // slight droop
+        } else if (facialExpression === "angry") {
+          bones.current.Head.rotation.x += 0.06;   // lean forward
+          bones.current.Head.rotation.z += -0.03;
+        } else if (facialExpression === "surprised") {
+          bones.current.Head.rotation.x += -0.05;  // lean back
+        } else if (facialExpression === "curious") {
+          bones.current.Head.rotation.z += 0.06;   // inquisitive tilt
+        }
+      }
+
+      // Emotional shoulder expression
+      if (facialExpression === "sad" || facialExpression === "empathetic") {
+        if (bones.current.LeftShoulder)  bones.current.LeftShoulder.rotation.z  += 0.06;
+        if (bones.current.RightShoulder) bones.current.RightShoulder.rotation.z -= 0.06;
+      } else if (facialExpression === "surprised") {
+        const shrug = Math.abs(Math.sin(t * 2)) * 0.05;
+        if (bones.current.LeftShoulder)  bones.current.LeftShoulder.rotation.z  -= shrug;
+        if (bones.current.RightShoulder) bones.current.RightShoulder.rotation.z += shrug;
+      }
+
+      // Talking arm gestures — alternating subtle forearm sway
+      if (talking) {
+        const gestureL = Math.sin(t * 2.5) * 0.04 + noise(t * 0.4, 9) * 0.02;
+        const gestureR = Math.sin(t * 2.5 + Math.PI) * 0.04 + noise(t * 0.4, 11) * 0.02;
+        if (bones.current.LeftForeArm)  bones.current.LeftForeArm.rotation.z  += gestureL;
+        if (bones.current.RightForeArm) bones.current.RightForeArm.rotation.z += gestureR;
+        if (bones.current.LeftArm)      bones.current.LeftArm.rotation.z      += gestureL * 0.4;
+        if (bones.current.RightArm)     bones.current.RightArm.rotation.z     += gestureR * 0.4;
+        // Slight torso lean forward when talking
+        if (bones.current.Spine2) bones.current.Spine2.rotation.x += 0.03;
       }
     }
   });
@@ -328,7 +387,7 @@ export function Avatar({ modelVariant = "default", ...props }) {
     <group {...props} dispose={null} ref={group}>
       <primitive object={nodes.Hips} />
       <skinnedMesh name="Body_Mesh" geometry={nodes.Body_Mesh.geometry} material={materials.Body} skeleton={nodes.Body_Mesh.skeleton} />
-      <skinnedMesh name="Eye_Mesh" geometry={nodes.Eye_Mesh.geometry} material={materials.Eyes} skeleton={nodes.Eye_Mesh.skeleton} morphTargetDictionary={nodes.Eye_Mesh.morphTargetDictionary} morphTargetInfluences={nodes.Eye_Mesh.morphTargetInfluences} />
+      <skinnedMesh name="Eye_Mesh" geometry={nodes.Eye_Mesh.geometry} material={materials.Eyes} skeleton={nodes.Eye_Mesh.skeleton} morphTargetDictionary={nodes.Eye_Mesh.morphTargetDictionary} morphTargetInfluences={nodes.Eye_Mesh.morphTargetInfluences} renderOrder={1} />
       <skinnedMesh name="EyeAO_Mesh" geometry={nodes.EyeAO_Mesh.geometry} material={materials.EyeAO} skeleton={nodes.EyeAO_Mesh.skeleton} morphTargetDictionary={nodes.EyeAO_Mesh.morphTargetDictionary} morphTargetInfluences={nodes.EyeAO_Mesh.morphTargetInfluences} />
       <skinnedMesh name="Eyelash_Mesh" geometry={nodes.Eyelash_Mesh.geometry} material={materials.Eyelash} skeleton={nodes.Eyelash_Mesh.skeleton} morphTargetDictionary={nodes.Eyelash_Mesh.morphTargetDictionary} morphTargetInfluences={nodes.Eyelash_Mesh.morphTargetInfluences} />
       <skinnedMesh name="Head_Mesh" geometry={nodes.Head_Mesh.geometry} material={materials.Head} skeleton={nodes.Head_Mesh.skeleton} morphTargetDictionary={nodes.Head_Mesh.morphTargetDictionary} morphTargetInfluences={nodes.Head_Mesh.morphTargetInfluences} />
@@ -345,3 +404,4 @@ export function Avatar({ modelVariant = "default", ...props }) {
 useGLTF.preload("/models/64f1a714fe61576b46f27ca2.glb");
 useGLTF.preload("/models/swastik.glb");
 useGLTF.preload("/models/animations.glb");
+useGLTF.preload("/models/swastik_anim.glb");

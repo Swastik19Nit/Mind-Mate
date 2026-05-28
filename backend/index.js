@@ -254,7 +254,11 @@ async function run(userMessage) {
     }
     
 
-    conversationHistory = [...conversationHistory, `User: ${userMessage}`, ...messages.map(m => `Lisa: ${m.text}`)];
+    conversationHistory = [
+      ...conversationHistory,
+      `User: ${userMessage}`,
+      ...messages.map(m => `Lisa: ${m.text}`)
+    ].slice(-20); // keep last 20 lines (~10 exchanges) to stay within token limits
     return messages;
   } catch (error) {
     console.error('Error in run function:', error);
@@ -308,8 +312,9 @@ app.post("/chat", async (req, res) => {
     // Get chat context for AI
     const chatContext = await getChatContext(req.user._id);
     
-    // Add context to conversation history
+    // Use only 2 most recent summaries to stay within token limits
     const contextPrompt = chatContext
+      .slice(0, 2)
       .map(ctx => `Previous context: ${ctx.summary}`)
       .join('\n');
     
