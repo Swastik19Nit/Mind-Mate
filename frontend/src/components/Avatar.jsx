@@ -71,13 +71,10 @@ const facialExpressions = {
   },
 };
 
-// All expression morph keys (pre-computed so useFrame doesn't allocate)
 const ALL_EXPR_KEYS = [
   ...new Set(Object.values(facialExpressions).flatMap((e) => Object.keys(e))),
 ];
 
-// ─── Fixed Rhubarb → RPM Oculus viseme mapping ───────────────────────────────
-// D was "viseme_AA" (wrong case), X was "viseme_PP" (wrong — should be silence)
 const VISEME_MAP = {
   A: "viseme_PP",
   B: "viseme_kk",
@@ -91,35 +88,37 @@ const VISEME_MAP = {
 };
 const ALL_VISEMES = [...new Set(Object.values(VISEME_MAP))];
 
-// ─── Organic pseudo-noise (multi-sine, no external dep) ──────────────────────
 const noise = (t, seed = 0) =>
   Math.sin(t * 1.3 + seed) * 0.5 +
   Math.sin(t * 2.7 + seed * 1.7) * 0.3 +
   Math.sin(t * 0.6 + seed * 0.4) * 0.2;
 
-export function Avatar(props) {
-  const { nodes, materials, scene } = useGLTF(
-    "/models/64f1a714fe61576b46f27ca2.glb"
-  );
-  const { message, onMessagePlayed } = useChat();
+export function Avatar({ modelVariant = "default", ...props }) {
+  const rpm    = useGLTF("/models/64f1a714fe61576b46f27ca2.glb");
+  const swastik = useGLTF("/models/swastik.glb");
   const { animations } = useGLTF("/models/animations.glb");
+
+  const isSwastik = modelVariant === "swastik";
+  const { nodes, materials, scene } = isSwastik ? swastik : rpm;
+
+  const { message, onMessagePlayed } = useChat();
   const group = useRef();
-  const { actions } = useAnimations(animations, group);
+  const { actions: animActions } = useAnimations(animations, group);
 
-  const [animation, setAnimation] = useState("Idle");
+  const [animation, setAnimation]               = useState("Idle");
   const [facialExpression, setFacialExpression] = useState("default");
-  const [lipsync, setLipsync] = useState(null);
-  const [blink, setBlink] = useState(false);
-  const [audio, setAudio] = useState(null);
+  const [lipsync, setLipsync]                   = useState(null);
+  const [blink, setBlink]                       = useState(false);
+  const [audio, setAudio]                       = useState(null);
 
-  const isTalking = useRef(false);
+  const isTalking      = useRef(false);
   const currentAnimRef = useRef(null);
-  const morphMeshes = useRef({});
-  const bones = useRef({});
-  const eyeTarget = useRef({ x: 0, y: 0 });
-  const saccadeTimer = useRef(THREE.MathUtils.randFloat(1, 3));
+  const morphMeshes    = useRef({});
+  const bones          = useRef({});
+  const eyeTarget      = useRef({ x: 0, y: 0 });
+  const saccadeTimer   = useRef(THREE.MathUtils.randFloat(1, 3));
 
-  // ─── Cache morph target indices once ─────────────────────────────────────
+  // ─── Cache morph target indices when scene changes ────────────────────────
   useEffect(() => {
     const map = {};
     scene.traverse((child) => {
@@ -133,18 +132,17 @@ export function Avatar(props) {
     morphMeshes.current = map;
   }, [scene]);
 
-  // ─── Cache bone refs once ─────────────────────────────────────────────────
+  // ─── Cache bone refs ──────────────────────────────────────────────────────
   useEffect(() => {
-    [
-      "Spine", "Spine1", "Spine2", "Neck", "Head", "Hips",
-      "LeftShoulder", "RightShoulder",
-    ].forEach((name) => {
-      const bone = scene.getObjectByName(name);
-      if (bone) bones.current[name] = bone;
-    });
+    bones.current = {};
+    ["Spine","Spine1","Spine2","Neck","Head","Hips","LeftShoulder","RightShoulder"]
+      .forEach((name) => {
+        const bone = scene.getObjectByName(name);
+        if (bone) bones.current[name] = bone;
+      });
   }, [scene]);
 
-  // ─── Frame-rate-independent lerp, no scene.traverse ──────────────────────
+  // ─── Frame-rate-independent lerp ─────────────────────────────────────────
   const lerpMorphTarget = useCallback((target, value, speed, delta) => {
     const entries = morphMeshes.current[target];
     if (!entries) return;
@@ -152,24 +150,18 @@ export function Avatar(props) {
     for (const { mesh, index } of entries) {
       if (mesh.morphTargetInfluences[index] === undefined) continue;
       mesh.morphTargetInfluences[index] = THREE.MathUtils.lerp(
-        mesh.morphTargetInfluences[index],
-        value,
-        alpha
+        mesh.morphTargetInfluences[index], value, alpha
       );
     }
   }, []);
 
-  // ─── Crossfade animations properly (no mixer.stats hack) ─────────────────
+  // ─── Crossfade animations ─────────────────────────────────────────────────
   useEffect(() => {
-    if (!actions[animation]) return;
-    const next = actions[animation];
+    if (!animActions[animation]) return;
+    const next = animActions[animation];
     const prevName = currentAnimRef.current;
-    const prev = prevName ? actions[prevName] : null;
-
-    next.reset();
-    next.setEffectiveTimeScale(1);
-    next.setEffectiveWeight(1);
-
+    const prev = prevName ? animActions[prevName] : null;
+    next.reset().setEffectiveTimeScale(1).setEffectiveWeight(1);
     if (prev && prevName !== animation) {
       next.play();
       prev.crossFadeTo(next, 0.4, true);
@@ -177,7 +169,7 @@ export function Avatar(props) {
       next.fadeIn(0.3).play();
     }
     currentAnimRef.current = animation;
-  }, [animation, actions]);
+  }, [animation, animActions]);
 
   // ─── Handle incoming message ──────────────────────────────────────────────
   useEffect(() => {
@@ -186,32 +178,24 @@ export function Avatar(props) {
       isTalking.current = false;
       return;
     }
-
     setAnimation(message.animation || "Idle");
     setFacialExpression(message.facialExpression || "default");
     setLipsync(message.lipsync || null);
 
     if (message.audio) {
-      // Stop any previous audio cleanly
-      setAudio((prev) => {
-        if (prev) { prev.pause(); prev.src = ""; }
-        return null;
-      });
-      const newAudio = new Audio("data:audio/mp3;base64," + message.audio);
-      newAudio.play();
+      setAudio((prev) => { if (prev) { prev.pause(); prev.src = ""; } return null; });
+      const a = new Audio("data:audio/mp3;base64," + message.audio);
+      a.play();
       isTalking.current = true;
-      newAudio.onended = () => {
-        isTalking.current = false;
-        onMessagePlayed();
-      };
-      setAudio(newAudio);
+      a.onended = () => { isTalking.current = false; onMessagePlayed(); };
+      setAudio(a);
     } else {
       isTalking.current = false;
       onMessagePlayed();
     }
   }, [message]);
 
-  // ─── Natural blink with occasional double-blink ───────────────────────────
+  // ─── Blink ────────────────────────────────────────────────────────────────
   useEffect(() => {
     let timer;
     const scheduleBlink = () => {
@@ -235,27 +219,25 @@ export function Avatar(props) {
     return () => clearTimeout(timer);
   }, []);
 
-  // ─── Main render loop (priority 1 → runs after drei's mixer.update at 0) ──
+  // ─── Main render loop ─────────────────────────────────────────────────────
   useFrame((state, delta) => {
-    const d = Math.min(delta, 0.1); // guard against NaN / tab-background spikes
+    const d = Math.min(delta, 0.1);
     const t = state.clock.elapsedTime;
 
     // Blink
     lerpMorphTarget("eyeBlinkLeft",  blink ? 1 : 0, 10, d);
     lerpMorphTarget("eyeBlinkRight", blink ? 1 : 0, 10, d);
 
-    // Facial expression — lerp all known keys toward current mapping
+    // Facial expression
     const mapping = facialExpressions[facialExpression] || {};
     for (const key of ALL_EXPR_KEYS) {
       if (key === "eyeBlinkLeft" || key === "eyeBlinkRight") continue;
       lerpMorphTarget(key, mapping[key] ?? 0, 3, d);
     }
 
-    // ── Lip sync with co-articulation ──────────────────────────────────────
-    // Reset all viseme weights each frame
+    // Lip sync with co-articulation
     const visemeWeights = {};
     for (const v of ALL_VISEMES) visemeWeights[v] = 0;
-
     if (message && lipsync && audio) {
       const ct = audio.currentTime;
       const cues = lipsync.mouthCues;
@@ -263,11 +245,9 @@ export function Avatar(props) {
         const cue = cues[i];
         if (ct >= cue.start && ct <= cue.end) {
           const progress = (ct - cue.start) / Math.max(cue.end - cue.start, 0.001);
-          // Current viseme fades out in last 20% of its window
           const curW = progress > 0.8 ? 1 - (progress - 0.8) / 0.2 : 1;
           const cv = VISEME_MAP[cue.value];
           if (cv) visemeWeights[cv] = Math.max(visemeWeights[cv], curW);
-          // Next viseme fades in during last 20% (co-articulation)
           const next = cues[i + 1];
           if (next && progress > 0.8) {
             const nv = VISEME_MAP[next.value];
@@ -277,11 +257,9 @@ export function Avatar(props) {
         }
       }
     }
-    for (const [v, w] of Object.entries(visemeWeights)) {
-      lerpMorphTarget(v, w, 12, d);
-    }
+    for (const [v, w] of Object.entries(visemeWeights)) lerpMorphTarget(v, w, 12, d);
 
-    // ── Saccadic eye movement ─────────────────────────────────────────────
+    // Saccadic eye movement
     saccadeTimer.current -= d;
     if (saccadeTimer.current <= 0) {
       eyeTarget.current = {
@@ -290,8 +268,7 @@ export function Avatar(props) {
       };
       saccadeTimer.current = THREE.MathUtils.randFloat(1.5, 5);
     }
-    const ex = eyeTarget.current.x;
-    const ey = eyeTarget.current.y;
+    const ex = eyeTarget.current.x, ey = eyeTarget.current.y;
     lerpMorphTarget("eyeLookOutLeft",   Math.max(-ex, 0) * 0.4, 8, d);
     lerpMorphTarget("eyeLookInLeft",    Math.max(ex, 0)  * 0.4, 8, d);
     lerpMorphTarget("eyeLookOutRight",  Math.max(ex, 0)  * 0.4, 8, d);
@@ -301,28 +278,21 @@ export function Avatar(props) {
     lerpMorphTarget("eyeLookUpRight",   Math.max(ey, 0)  * 0.3, 8, d);
     lerpMorphTarget("eyeLookDownRight", Math.max(-ey, 0) * 0.3, 8, d);
 
-    // ── Procedural body — runs after drei's mixer.update (priority 1) ─────
+    // Procedural body
     const talking = isTalking.current;
-
-    // Breathing: Spine/Chest rise on inhale, shoulders rise slightly
-    const breathHz  = talking ? 0.35 : 0.2;
-    const breathAmt = Math.sin(t * breathHz * Math.PI * 2);
-    if (bones.current.Spine)  bones.current.Spine.rotation.x  += breathAmt * 0.006;
-    if (bones.current.Spine1) bones.current.Spine1.rotation.x += breathAmt * 0.009;
+    const breathAmt = Math.sin(t * (talking ? 0.35 : 0.2) * Math.PI * 2);
+    if (bones.current.Spine)         bones.current.Spine.rotation.x         += breathAmt * 0.006;
+    if (bones.current.Spine1)        bones.current.Spine1.rotation.x        += breathAmt * 0.009;
     if (bones.current.LeftShoulder)  bones.current.LeftShoulder.rotation.z  += breathAmt * 0.004;
     if (bones.current.RightShoulder) bones.current.RightShoulder.rotation.z -= breathAmt * 0.004;
 
-    // Idle sway — organic multi-sine noise on hips
     if (!talking) {
-      const swayX = noise(t * 0.10, 0) * 0.012;
-      const swayZ = noise(t * 0.07, 3) * 0.008;
       if (bones.current.Hips) {
-        bones.current.Hips.rotation.x += swayX;
-        bones.current.Hips.rotation.z += swayZ;
+        bones.current.Hips.rotation.x += noise(t * 0.10, 0) * 0.012;
+        bones.current.Hips.rotation.z += noise(t * 0.07, 3) * 0.008;
       }
     }
 
-    // Head movement: bob during speech, gentle drift while idle
     if (talking) {
       const bob = Math.sin(t * 4.0) * 0.012 + noise(t * 0.5, 7) * 0.006;
       if (bones.current.Head) bones.current.Head.rotation.x += bob;
@@ -333,23 +303,45 @@ export function Avatar(props) {
         bones.current.Head.rotation.z += noise(t * 0.05, 5) * 0.003;
       }
     }
-  }, 1);
+  });
 
+  // ─── RPM avatar JSX ───────────────────────────────────────────────────────
+  if (!isSwastik) {
+    return (
+      <group {...props} dispose={null} ref={group}>
+        <primitive object={nodes.Hips} />
+        <skinnedMesh name="Wolf3D_Body" geometry={nodes.Wolf3D_Body.geometry} material={materials.Wolf3D_Body} skeleton={nodes.Wolf3D_Body.skeleton} />
+        <skinnedMesh name="Wolf3D_Outfit_Bottom" geometry={nodes.Wolf3D_Outfit_Bottom.geometry} material={materials.Wolf3D_Outfit_Bottom} skeleton={nodes.Wolf3D_Outfit_Bottom.skeleton} />
+        <skinnedMesh name="Wolf3D_Outfit_Footwear" geometry={nodes.Wolf3D_Outfit_Footwear.geometry} material={materials.Wolf3D_Outfit_Footwear} skeleton={nodes.Wolf3D_Outfit_Footwear.skeleton} />
+        <skinnedMesh name="Wolf3D_Outfit_Top" geometry={nodes.Wolf3D_Outfit_Top.geometry} material={materials.Wolf3D_Outfit_Top} skeleton={nodes.Wolf3D_Outfit_Top.skeleton} />
+        <skinnedMesh name="Wolf3D_Hair" geometry={nodes.Wolf3D_Hair.geometry} material={materials.Wolf3D_Hair} skeleton={nodes.Wolf3D_Hair.skeleton} />
+        <skinnedMesh name="EyeLeft" geometry={nodes.EyeLeft.geometry} material={materials.Wolf3D_Eye} skeleton={nodes.EyeLeft.skeleton} morphTargetDictionary={nodes.EyeLeft.morphTargetDictionary} morphTargetInfluences={nodes.EyeLeft.morphTargetInfluences} />
+        <skinnedMesh name="EyeRight" geometry={nodes.EyeRight.geometry} material={materials.Wolf3D_Eye} skeleton={nodes.EyeRight.skeleton} morphTargetDictionary={nodes.EyeRight.morphTargetDictionary} morphTargetInfluences={nodes.EyeRight.morphTargetInfluences} />
+        <skinnedMesh name="Wolf3D_Head" geometry={nodes.Wolf3D_Head.geometry} material={materials.Wolf3D_Skin} skeleton={nodes.Wolf3D_Head.skeleton} morphTargetDictionary={nodes.Wolf3D_Head.morphTargetDictionary} morphTargetInfluences={nodes.Wolf3D_Head.morphTargetInfluences} />
+        <skinnedMesh name="Wolf3D_Teeth" geometry={nodes.Wolf3D_Teeth.geometry} material={materials.Wolf3D_Teeth} skeleton={nodes.Wolf3D_Teeth.skeleton} morphTargetDictionary={nodes.Wolf3D_Teeth.morphTargetDictionary} morphTargetInfluences={nodes.Wolf3D_Teeth.morphTargetInfluences} />
+      </group>
+    );
+  }
+
+  // ─── Swastik (Avaturn T2) avatar JSX ─────────────────────────────────────
   return (
     <group {...props} dispose={null} ref={group}>
       <primitive object={nodes.Hips} />
-      <skinnedMesh name="Wolf3D_Body" geometry={nodes.Wolf3D_Body.geometry} material={materials.Wolf3D_Body} skeleton={nodes.Wolf3D_Body.skeleton} />
-      <skinnedMesh name="Wolf3D_Outfit_Bottom" geometry={nodes.Wolf3D_Outfit_Bottom.geometry} material={materials.Wolf3D_Outfit_Bottom} skeleton={nodes.Wolf3D_Outfit_Bottom.skeleton} />
-      <skinnedMesh name="Wolf3D_Outfit_Footwear" geometry={nodes.Wolf3D_Outfit_Footwear.geometry} material={materials.Wolf3D_Outfit_Footwear} skeleton={nodes.Wolf3D_Outfit_Footwear.skeleton} />
-      <skinnedMesh name="Wolf3D_Outfit_Top" geometry={nodes.Wolf3D_Outfit_Top.geometry} material={materials.Wolf3D_Outfit_Top} skeleton={nodes.Wolf3D_Outfit_Top.skeleton} />
-      <skinnedMesh name="Wolf3D_Hair" geometry={nodes.Wolf3D_Hair.geometry} material={materials.Wolf3D_Hair} skeleton={nodes.Wolf3D_Hair.skeleton} />
-      <skinnedMesh name="EyeLeft" geometry={nodes.EyeLeft.geometry} material={materials.Wolf3D_Eye} skeleton={nodes.EyeLeft.skeleton} morphTargetDictionary={nodes.EyeLeft.morphTargetDictionary} morphTargetInfluences={nodes.EyeLeft.morphTargetInfluences} />
-      <skinnedMesh name="EyeRight" geometry={nodes.EyeRight.geometry} material={materials.Wolf3D_Eye} skeleton={nodes.EyeRight.skeleton} morphTargetDictionary={nodes.EyeRight.morphTargetDictionary} morphTargetInfluences={nodes.EyeRight.morphTargetInfluences} />
-      <skinnedMesh name="Wolf3D_Head" geometry={nodes.Wolf3D_Head.geometry} material={materials.Wolf3D_Skin} skeleton={nodes.Wolf3D_Head.skeleton} morphTargetDictionary={nodes.Wolf3D_Head.morphTargetDictionary} morphTargetInfluences={nodes.Wolf3D_Head.morphTargetInfluences} />
-      <skinnedMesh name="Wolf3D_Teeth" geometry={nodes.Wolf3D_Teeth.geometry} material={materials.Wolf3D_Teeth} skeleton={nodes.Wolf3D_Teeth.skeleton} morphTargetDictionary={nodes.Wolf3D_Teeth.morphTargetDictionary} morphTargetInfluences={nodes.Wolf3D_Teeth.morphTargetInfluences} />
+      <skinnedMesh name="Body_Mesh" geometry={nodes.Body_Mesh.geometry} material={materials.Body} skeleton={nodes.Body_Mesh.skeleton} />
+      <skinnedMesh name="Eye_Mesh" geometry={nodes.Eye_Mesh.geometry} material={materials.Eyes} skeleton={nodes.Eye_Mesh.skeleton} morphTargetDictionary={nodes.Eye_Mesh.morphTargetDictionary} morphTargetInfluences={nodes.Eye_Mesh.morphTargetInfluences} />
+      <skinnedMesh name="EyeAO_Mesh" geometry={nodes.EyeAO_Mesh.geometry} material={materials.EyeAO} skeleton={nodes.EyeAO_Mesh.skeleton} morphTargetDictionary={nodes.EyeAO_Mesh.morphTargetDictionary} morphTargetInfluences={nodes.EyeAO_Mesh.morphTargetInfluences} />
+      <skinnedMesh name="Eyelash_Mesh" geometry={nodes.Eyelash_Mesh.geometry} material={materials.Eyelash} skeleton={nodes.Eyelash_Mesh.skeleton} morphTargetDictionary={nodes.Eyelash_Mesh.morphTargetDictionary} morphTargetInfluences={nodes.Eyelash_Mesh.morphTargetInfluences} />
+      <skinnedMesh name="Head_Mesh" geometry={nodes.Head_Mesh.geometry} material={materials.Head} skeleton={nodes.Head_Mesh.skeleton} morphTargetDictionary={nodes.Head_Mesh.morphTargetDictionary} morphTargetInfluences={nodes.Head_Mesh.morphTargetInfluences} />
+      <skinnedMesh name="Teeth_Mesh" geometry={nodes.Teeth_Mesh.geometry} material={nodes.Teeth_Mesh.material} skeleton={nodes.Teeth_Mesh.skeleton} morphTargetDictionary={nodes.Teeth_Mesh.morphTargetDictionary} morphTargetInfluences={nodes.Teeth_Mesh.morphTargetInfluences} />
+      <skinnedMesh name="Tongue_Mesh" geometry={nodes.Tongue_Mesh.geometry} material={nodes.Tongue_Mesh.material} skeleton={nodes.Tongue_Mesh.skeleton} morphTargetDictionary={nodes.Tongue_Mesh.morphTargetDictionary} morphTargetInfluences={nodes.Tongue_Mesh.morphTargetInfluences} />
+      <skinnedMesh name="avaturn_hair_0" geometry={nodes.avaturn_hair_0.geometry} material={materials.avaturn_hair_0_material} skeleton={nodes.avaturn_hair_0.skeleton} />
+      <skinnedMesh name="avaturn_hair_1" geometry={nodes.avaturn_hair_1.geometry} material={materials.avaturn_hair_1_material} skeleton={nodes.avaturn_hair_1.skeleton} />
+      <skinnedMesh name="avaturn_shoes_0" geometry={nodes.avaturn_shoes_0.geometry} material={materials.avaturn_shoes_0_material} skeleton={nodes.avaturn_shoes_0.skeleton} />
+      <skinnedMesh name="avaturn_look_0" geometry={nodes.avaturn_look_0.geometry} material={materials.avaturn_look_0_material} skeleton={nodes.avaturn_look_0.skeleton} />
     </group>
   );
 }
 
 useGLTF.preload("/models/64f1a714fe61576b46f27ca2.glb");
+useGLTF.preload("/models/swastik.glb");
 useGLTF.preload("/models/animations.glb");

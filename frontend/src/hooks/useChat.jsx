@@ -39,6 +39,9 @@ export const ChatProvider = ({ children }) => {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [avatarModel, setAvatarModel] = useState("default");
+  const toggleAvatarModel = () =>
+    setAvatarModel((m) => (m === "default" ? "swastik" : "default"));
 
   const onMessagePlayed = () => {
     setMessages((messages) => messages.slice(1));
@@ -59,6 +62,8 @@ export const ChatProvider = ({ children }) => {
         message,
         onMessagePlayed,
         loading,
+        avatarModel,
+        toggleAvatarModel,
       }}
     >
       {children}

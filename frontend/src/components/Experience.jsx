@@ -8,6 +8,7 @@ import {
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useChat } from "../hooks/useChat";
 import { Avatar } from "./Avatar";
+
 const Dots = (props) => {
   const { loading } = useChat();
   const [loadingText, setLoadingText] = useState("");
@@ -39,6 +40,7 @@ const Dots = (props) => {
 
 export const Experience = () => {
   const cameraControls = useRef();
+  const { avatarModel } = useChat();
   // const { cameraZoomed } = useChat();
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export const Experience = () => {
       <Suspense>
         <Dots position-y={1.75} position-x={-0.02} />
       </Suspense>
-      <Avatar />
+      <Avatar key={avatarModel} modelVariant={avatarModel} />
       <ContactShadows opacity={0.7} />
     </>
   );

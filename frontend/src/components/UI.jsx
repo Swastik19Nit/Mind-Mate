@@ -8,7 +8,7 @@ const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 export const UI = ({ hidden }) => {
   const input = useRef();
-  const { chat, loading, message } = useChat();
+  const { chat, loading, message, avatarModel, toggleAvatarModel } = useChat();
   const [user, setUser] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [Camera, setCamera] = useState(false);
@@ -109,6 +109,15 @@ export const UI = ({ hidden }) => {
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Avatar toggle */}
+              <button
+                onClick={toggleAvatarModel}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all border border-gray-300 hover:border-gray-500 bg-white bg-opacity-80"
+                title="Switch avatar"
+              >
+                <span>{avatarModel === "swastik" ? "🧑 Swastik's version" : "🤖 Lisa"}</span>
+              </button>
+
               <button
                 onClick={() => setShowChatHistory(true)}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
