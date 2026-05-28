@@ -83,10 +83,14 @@ export const UI = ({ hidden }) => {
   const handleLogout = () => {
     fetch(`${apiUrl}/logout`, { credentials: "include" })
       .then(() => {
-        localStorage.removeItem("user");
-        window.location.href = "/";
+        localStorage.clear();
+        window.location.replace("/");
       })
-      .catch(err => console.error("Logout failed:", err));
+      .catch(err => {
+        console.error("Logout failed:", err);
+        localStorage.clear();
+        window.location.replace("/");
+      });
   };
 
   if (hidden) {

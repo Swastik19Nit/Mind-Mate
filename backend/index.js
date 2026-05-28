@@ -2,7 +2,7 @@ import { exec } from "child_process";
 import cors from "cors";
 import * as dotenv from "dotenv";
 import express from "express";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import { ElevenLabsClient } from 'elevenlabs';
 import { PassThrough } from 'stream';
 import fs from 'fs/promises';
@@ -16,12 +16,12 @@ import Chat from './models/Chats.js';
 
 dotenv.config();
 
-const API_KEY = process.env.GEMINI_AI_API_KEY || "-";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "-";
 const ELEVENLABS_API_KEY = process.env.ELEVEN_LABS_API_KEY;
 const VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
+const RHUBARB_PATH = process.env.RHUBARB_PATH || "./bin/rhubarb";
 
-const genAI = new GoogleGenerativeAI(API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const groq = new Groq({ apiKey: GROQ_API_KEY });
 
 const client = new ElevenLabsClient({ apiKey: ELEVENLABS_API_KEY });
 
@@ -110,12 +110,11 @@ app.get("/auth/check", (req, res) => {
 
 // Update logout to properly handle session
 app.get('/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      console.error('Logout error:', err);
-    }
-    req.logout(() => {
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+  req.logout(() => {
+    req.session.destroy((err) => {
+      if (err) console.error('Logout error:', err);
+      res.clearCookie('connect.sid');
+      res.json({ success: true });
     });
   });
 });
@@ -201,7 +200,7 @@ const lipSyncMessage = async (fileName) => {
   console.log(`Conversion done in ${new Date().getTime() - time}ms`);
 
   const jsonFile = fileName.replace('.mp3', '.json');
-  await execCommand(`.\\audios\\rhubarb.exe -f json -o ${jsonFile} ${wavFile} -r phonetic`);
+  await execCommand(`${RHUBARB_PATH} -f json -o ${jsonFile} ${wavFile} -r phonetic`);
   console.log(`Lip sync done in ${new Date().getTime() - time}ms`);
   return jsonFile;
 };
@@ -225,9 +224,11 @@ async function run(userMessage) {
       User emotion: Stressed
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = await response.text();
+    const result = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "llama-3.3-70b-versatile",
+    });
+    const text = result.choices[0]?.message?.content || "";
 
     const jsonText = text.replace(/```json/g, '').replace(/```/g, '').trim();
     let messages = JSON.parse(jsonText);
@@ -336,7 +337,7 @@ app.post("/chat", async (req, res) => {
       return;
     }
 
-    if (!ELEVENLABS_API_KEY || API_KEY === "-") {
+    if (!ELEVENLABS_API_KEY || GROQ_API_KEY === "-") {
       const apiErrorMessage = {
         text: "Please, don't forget to add your API keys!",
         audio: await audioFileToBase64("audios/api_0.wav"),

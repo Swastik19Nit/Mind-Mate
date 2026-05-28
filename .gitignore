@@ -1,2 +1,6 @@
 node_modules/
 .env
+backend/audios/message_*.mp3
+backend/audios/message_*.wav
+backend/audios/message_*.json
+backend/bin/
