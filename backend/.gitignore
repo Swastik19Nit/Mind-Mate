@@ -1,0 +1,7 @@
+node_modules/
+.env
+
+# Runtime-generated audio artifacts (message_* files created per request)
+audios/message_*.mp3
+audios/message_*.wav
+audios/message_*.json
