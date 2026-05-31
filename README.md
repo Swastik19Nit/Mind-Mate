@@ -22,7 +22,7 @@ The code provided in this repository is designed to be run on a Windows environm
 ## Workflow
 ![Image Name](https://github.com/Divyanshu4fx/MindMate/blob/main/Sample_Videos/Workflow_diagram.png)
 ![Image2](https://github.com/Swastik19Nit/Mind-Mate/assets/122457803/ab4a5ac1-258d-4324-beb4-96e6548b29c5)
-
+<img width="3024" height="1718" alt="image" src="https://github.com/user-attachments/assets/279a7bfb-cacd-433d-87cb-847c0a87fe93" />
 
 We have added several features to enhance MindMate:
 
@@ -35,6 +35,7 @@ User Chat Data Storage: Improve user experience and content optimization through
 Speech Input from Users: Enable natural interaction by allowing users to input through speech using speech recognition technology.
 
 <img width="1114" height="492" alt="image" src="https://github.com/user-attachments/assets/0f1c0a5f-4234-46ea-b807-d7b1ec07ee54" />
+
 
 
 Please refer to [Detailed Process Flow: User Session, Context Generation, and Cross-Session Memory](https://github.com/Swastik19Nit/Mind-Mate/issues/7) to understand the detailed process flow.
