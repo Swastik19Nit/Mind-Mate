@@ -5,7 +5,13 @@ const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
 const ChatContext = createContext();
 
 export const ChatProvider = ({ children }) => {
-  const chat = async (message) => {
+  const chat = async (text) => {
+    if (!text?.trim()) return;
+    // Persist the user's turn in the visible transcript immediately
+    setTranscript((prev) => [
+      ...prev,
+      { sender: "user", text, timestamp: new Date().toISOString() },
+    ]);
     try {
       setLoading(true);
       const response = await fetch(`${apiUrl}/chat`, {
@@ -15,7 +21,7 @@ export const ChatProvider = ({ children }) => {
           "Accept": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message: text }),
       });
 
       if (!response.ok) {
@@ -23,14 +29,34 @@ export const ChatProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      
+
       if (data.messages && Array.isArray(data.messages)) {
-        setMessages(prevMessages => [...prevMessages, ...data.messages]);
+        // Drive the avatar playback queue
+        setMessages((prevMessages) => [...prevMessages, ...data.messages]);
+        // Append Lisa's turns to the persistent transcript
+        setTranscript((prev) => [
+          ...prev,
+          ...data.messages.map((m) => ({
+            sender: "bot",
+            text: m.text,
+            facialExpression: m.facialExpression,
+            timestamp: new Date().toISOString(),
+          })),
+        ]);
       } else {
         console.error('Invalid response format:', data);
       }
     } catch (error) {
       console.error('Chat error:', error);
+      setTranscript((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: "Sorry, I couldn't reach you just now. Please try again in a moment.",
+          isError: true,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -38,6 +64,7 @@ export const ChatProvider = ({ children }) => {
 
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState(null);
+  const [transcript, setTranscript] = useState([]);
   const [loading, setLoading] = useState(false);
   const [avatarModel, setAvatarModel] = useState("default");
   const toggleAvatarModel = () =>
@@ -60,6 +87,7 @@ export const ChatProvider = ({ children }) => {
       value={{
         chat,
         message,
+        transcript,
         onMessagePlayed,
         loading,
         avatarModel,

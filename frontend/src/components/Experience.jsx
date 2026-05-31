@@ -57,7 +57,7 @@ export const Experience = () => {
   return (
     <>
       <CameraControls   ref={cameraControls} />
-      <Environment preset="sunset" />
+      <Environment preset="dawn" />
       <Suspense>
         <Dots position-y={1.75} position-x={-0.02} />
       </Suspense>
