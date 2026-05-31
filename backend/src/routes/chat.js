@@ -31,7 +31,7 @@ async function pruneOldChats(userId) {
   }
 }
 
-router.get('/', isAuthenticated, async (req, res) => {
+router.get('/chats', isAuthenticated, async (req, res) => {
   try {
     const chats = await Chat.find({ user: req.user._id }).sort({ lastMessageAt: -1 });
     res.json(chats);
@@ -41,7 +41,7 @@ router.get('/', isAuthenticated, async (req, res) => {
   }
 });
 
-router.post('/', isAuthenticated, async (req, res) => {
+router.post('/chat', isAuthenticated, async (req, res) => {
   try {
     const userMessage = req.body.message;
     let chat;

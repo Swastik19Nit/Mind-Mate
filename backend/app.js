@@ -40,7 +40,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use('/auth', authRouter);
-app.use('/chats', chatRouter);
+app.use('/', chatRouter);
 
 app.get('/logout', (req, res) => {
   req.logout(() => {
