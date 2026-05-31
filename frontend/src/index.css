@@ -14,9 +14,14 @@
 
 body {
   margin: 0;
-  background-color: #a8fab3;
-  /* background-image: linear-gradient(19deg, #a8faf2 0%, #1783ef 100%); */
-  background-image: url(../public/background-optimized.jpg);
+  background-color: #cde3dd;
+  background-image: linear-gradient(160deg, #d6e8e3 0%, #bcd8e4 45%, #a9cdc2 100%);
+  transition: background-color 0.4s ease, background-image 0.4s ease;
+}
+
+html.dark body {
+  background-color: #0a0f0c;
+  background-image: radial-gradient(circle at 50% 35%, #163021 0%, #0c1410 55%, #060908 100%);
 }
 
 body.greenScreen {
